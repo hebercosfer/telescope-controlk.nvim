@@ -2,6 +2,9 @@
 -- Run from the repository root:
 --   SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$LAZY/telescope.nvim,$LAZY/plenary.nvim" -c "luafile tests/integration/run.lua"
 --   SESSION=config (same command)
+-- FZF=1 also loads telescope-fzf-native, as the owner's config does. Put its directory on the
+-- runtimepath too: --cmd "set rtp+=$LAZY/telescope-fzf-native.nvim". Without this, the picker's
+-- sorter is never tested with a sorter that keeps state.
 -- Needs clangd, cmake (with Ninja) and ctest on PATH. Works in a temporary copy of the fixtures (FIXTURES=<dir> reuses one).
 -- Fixtures are copied to a temporary directory for every run. They must not sit inside this
 -- repository: its .git would become the project root of the samples. Set FIXTURES to reuse a directory.
@@ -10,6 +13,9 @@ local FIX = os.getenv("FIXTURES") or vim.fn.tempname()
 local SESSION = os.getenv("SESSION") or "lsp"
 local state = require("telescope.actions.state")
 local actions = require("telescope.actions")
+if os.getenv("FZF") == "1" then
+  require("telescope").load_extension("fzf")
+end
 
 local passed, failed = 0, 0
 local function say(...)

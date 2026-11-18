@@ -8,7 +8,8 @@ Status as of the last session. Re-check with `git status` and `git log` before a
   contains only `.luarc.json`, because its commit window ran a newline-joined pathspec.
 - Every file is tracked as of the second commit, including `doc/controlk.txt` and the design under
   `docs/superpowers/specs/`.
-- No remote yet. Pushing waits for the owner's commit to land.
+- Remote `origin` is `git@github.com:hebercosfer/telescope-controlk.nvim.git`, private. `main` is
+  pushed through `4141a9f`.
 
 ## Blocked on the owner
 
@@ -23,7 +24,8 @@ These need a decision or an explicit yes. Do not start them on your own.
 - **T2. Choose the locator key.** `<c-k>` in normal mode is already window navigation in
   `~/Workspace/mDotFiles/nvim/.config/nvim/lua/config/options.lua:28`. Pick another key for
   `:Telescope controlk`, or move the window navigation. The README uses `<C-k>` as an example.
-- **T3. Create the GitHub repository and push.** This is outward-facing. Wait for a yes.
+- **T3. Create the GitHub repository and push.** Done 2026-11-18: private repository, pushed at the
+  owner's request.
 
 ## Ready for an agent
 
