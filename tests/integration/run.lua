@@ -408,4 +408,4 @@ else
 end
 
 say(("RESULT %s: %d passed, %d failed"):format(SESSION, passed, failed))
-vim.cmd("qa!")
+vim.cmd(failed == 0 and "qa!" or "cquit 1")
