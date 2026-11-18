@@ -52,7 +52,10 @@ return {
             detail = type_label(target.type),
             tag = "build",
             run = function()
-              util.terminal({ "cmake", "--build", state.build_dir, "--target", target.name }, state.root)
+              util.terminal(
+                { "cmake", "--build", state.build_dir, "--target", target.name },
+                state.root
+              )
             end,
           })
         end
@@ -112,7 +115,10 @@ return {
               tag = "test",
               passthrough = true,
               run = function()
-                util.terminal({ "ctest", "--test-dir", state.build_dir, "--output-on-failure" }, state.root)
+                util.terminal(
+                  { "ctest", "--test-dir", state.build_dir, "--output-on-failure" },
+                  state.root
+                )
               end,
             },
           }

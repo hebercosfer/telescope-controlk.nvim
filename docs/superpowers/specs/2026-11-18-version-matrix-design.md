@@ -173,7 +173,7 @@ Constraints).
 - Neovim downloads use `rhysd/action-setup-vim`, pinned to a release tag.
 - Formatting always uses the owner's own `.stylua.toml` (column width 100, sorted
   requires, parentheses kept), copied into the repo. The owner's CLAUDE.md says they format with
-  stylua. Against the current tree, the owner's config would change 10 Lua files, and Telescope's would change 23: it drops the parentheses in `require("x")` and uses width 120. The formatting pass is a separate commit, and it must land before the stylua job can pass.
+  stylua. The formatting pass with that config changed 10 Lua files, and it is its own commit. `.stylua.toml` in the repo is the owner's file, so `stylua --check .` uses it.
 - The weekly job covers Telescope `master` and Neovim nightly, on each OS. It runs
   once a week and blocks nothing.
 - No `.luacheckrc` in this change. Telescope has one, and it is a candidate for

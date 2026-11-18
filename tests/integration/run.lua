@@ -11,8 +11,8 @@
 local SRC = vim.fn.getcwd() .. "/tests/integration/fixtures"
 local FIX = os.getenv("FIXTURES") or vim.fn.tempname()
 local SESSION = os.getenv("SESSION") or "lsp"
-local state = require("telescope.actions.state")
 local actions = require("telescope.actions")
+local state = require("telescope.actions.state")
 if os.getenv("FZF") == "1" then
   require("telescope").load_extension("fzf")
 end
@@ -204,10 +204,15 @@ local function lsp_and_cmake()
     require("controlk.util").act(jump_target)
     local name = vim.api.nvim_buf_get_name(0)
     local line = vim.api.nvim_win_get_cursor(0)[1]
-    check("enter on a class jumps to its definition", name:match("widget%.h$") ~= nil and line == 12,
-      ("%s:%d"):format(name, line))
-    check("jumping within the open file keeps clangd attached",
-      #vim.lsp.get_clients({ bufnr = 0 }) > 0)
+    check(
+      "enter on a class jumps to its definition",
+      name:match("widget%.h$") ~= nil and line == 12,
+      ("%s:%d"):format(name, line)
+    )
+    check(
+      "jumping within the open file keeps clangd attached",
+      #vim.lsp.get_clients({ bufnr = 0 }) > 0
+    )
   else
     check("enter on a class jumps to its definition", false, "no Widget row")
   end
@@ -218,7 +223,10 @@ local function lsp_and_cmake()
   picker, prompt = open_picker(FIX .. "/cmake_proj/src/main.cpp")
 
   rows = type_text(picker, prompt, "cm ")
-  check("cm lists targets", has_display(rows, "app") and has_display(rows, "corelib") and has_display(rows, "docs"))
+  check(
+    "cm lists targets",
+    has_display(rows, "app") and has_display(rows, "corelib") and has_display(rows, "docs")
+  )
   check("cm offers reconfigure", has_display(rows, "Configure project"))
   local corelib
   for _, r in ipairs(rows) do
@@ -234,11 +242,23 @@ local function lsp_and_cmake()
       app_def = r.value
     end
   end
-  check("cmo lists definition sites", app_def ~= nil and app_def.path:match("CMakeLists%.txt$") ~= nil)
-  check("cmo gives the definition line", app_def ~= nil and app_def.lnum == 5, app_def and tostring(app_def.lnum))
+  check(
+    "cmo lists definition sites",
+    app_def ~= nil and app_def.path:match("CMakeLists%.txt$") ~= nil
+  )
+  check(
+    "cmo gives the definition line",
+    app_def ~= nil and app_def.lnum == 5,
+    app_def and tostring(app_def.lnum)
+  )
 
   rows = type_text(picker, prompt, "ct ")
-  check("ct lists tests", has_display(rows, "smoke") and has_display(rows, "corelib_unit") and has_display(rows, "Run all tests"))
+  check(
+    "ct lists tests",
+    has_display(rows, "smoke")
+      and has_display(rows, "corelib_unit")
+      and has_display(rows, "Run all tests")
+  )
   local run_all
   for _, r in ipairs(rows) do
     if r.value.text == "Run all tests" then
@@ -327,12 +347,20 @@ local function config_session()
 
   say("== command and validation")
   vim.cmd("Telescope controlk")
-  check(":Telescope controlk opens the picker", vim.bo.filetype == "TelescopePrompt", vim.bo.filetype)
+  check(
+    ":Telescope controlk opens the picker",
+    vim.bo.filetype == "TelescopePrompt",
+    vim.bo.filetype
+  )
   close(vim.api.nvim_get_current_buf())
 
   notices = {}
   require("controlk").setup({ prefixes = { buffers = "C", lsp_classes = "C" } })
-  check("duplicate prefix is reported", #notices >= 1 and notices[1]:find("prefix 'C'", 1, true) ~= nil, notices[1])
+  check(
+    "duplicate prefix is reported",
+    #notices >= 1 and notices[1]:find("prefix 'C'", 1, true) ~= nil,
+    notices[1]
+  )
   require("controlk").setup({})
 end
 
@@ -345,15 +373,25 @@ local function prepare()
   end
   local proj = FIX .. "/proj"
   local db = {
-    { directory = proj, file = proj .. "/src/main.cpp", arguments = { "clang++", "-std=c++17", "-c", "src/main.cpp" } },
-    { directory = proj, file = proj .. "/src/widget.cpp", arguments = { "clang++", "-std=c++17", "-c", "src/widget.cpp" } },
+    {
+      directory = proj,
+      file = proj .. "/src/main.cpp",
+      arguments = { "clang++", "-std=c++17", "-c", "src/main.cpp" },
+    },
+    {
+      directory = proj,
+      file = proj .. "/src/widget.cpp",
+      arguments = { "clang++", "-std=c++17", "-c", "src/widget.cpp" },
+    },
   }
   local f = assert(io.open(proj .. "/compile_commands.json", "w"))
   f:write(vim.json.encode(db))
   f:close()
 
   local cm = FIX .. "/cmake_proj"
-  local res = vim.system({ "cmake", "-S", cm, "-B", cm .. "/build-ninja", "-G", "Ninja" }, { text = true }):wait()
+  local res = vim
+    .system({ "cmake", "-S", cm, "-B", cm .. "/build-ninja", "-G", "Ninja" }, { text = true })
+    :wait()
   assert(res.code == 0, "cmake configure failed: " .. (res.stderr or ""))
 end
 

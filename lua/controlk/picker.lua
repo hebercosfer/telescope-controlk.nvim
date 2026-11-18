@@ -1,16 +1,16 @@
 -- The Telescope adapter. Everything Telescope-specific lives in this file.
 
-local actions = require("telescope.actions")
 local action_state = require("telescope.actions.state")
+local actions = require("telescope.actions")
 local conf = require("telescope.config").values
 local finders = require("telescope.finders")
 local pickers = require("telescope.pickers")
 local sorters = require("telescope.sorters")
 
+local cmake = require("controlk.cmake")
 local parse = require("controlk.parse")
 local registry = require("controlk.sources")
 local util = require("controlk.util")
-local cmake = require("controlk.cmake")
 
 local M = {}
 

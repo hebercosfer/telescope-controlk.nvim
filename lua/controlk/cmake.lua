@@ -99,7 +99,11 @@ end
 ---@return string|nil
 function M.find_root(dir)
   local roots = {}
-  for _, file in ipairs(vim.fs.find("CMakeLists.txt", { upward = true, path = dir, limit = math.huge, type = "file" })) do
+  for _, file in
+    ipairs(
+      vim.fs.find("CMakeLists.txt", { upward = true, path = dir, limit = math.huge, type = "file" })
+    )
+  do
     table.insert(roots, vim.fs.dirname(file))
   end
   for _, root in ipairs(roots) do
@@ -114,7 +118,11 @@ end
 ---@return string[] directories holding a CMakeCache.txt, sorted
 function M.build_dirs(root)
   local seen, found = {}, {}
-  for _, pattern in ipairs({ "build*/CMakeCache.txt", "build/*/CMakeCache.txt", "cmake-build-*/CMakeCache.txt" }) do
+  for _, pattern in ipairs({
+    "build*/CMakeCache.txt",
+    "build/*/CMakeCache.txt",
+    "cmake-build-*/CMakeCache.txt",
+  }) do
     for _, cache in ipairs(vim.fn.glob(root .. "/" .. pattern, false, true)) do
       local dir = vim.fs.dirname(cache)
       if not seen[dir] then
@@ -182,11 +190,19 @@ function M.load_model(ctx, done)
 
     M.configure(root, build_dir, function(ok, stderr)
       if not ok then
-        return finish({ error = "CMake configure failed: " .. vim.trim(stderr or ""), root = root, build_dir = build_dir })
+        return finish({
+          error = "CMake configure failed: " .. vim.trim(stderr or ""),
+          root = root,
+          build_dir = build_dir,
+        })
       end
       local configured = M.read_model(build_dir)
       if not configured then
-        return finish({ error = "configure produced no CMake model", root = root, build_dir = build_dir })
+        return finish({
+          error = "configure produced no CMake model",
+          root = root,
+          build_dir = build_dir,
+        })
       end
       finish({ model = configured, build_dir = build_dir, root = root })
     end)
@@ -213,12 +229,16 @@ end
 ---@param build_dir string
 ---@param done fun(names: string[]|nil, err: string|nil)
 function M.list_tests(build_dir, done)
-  vim.system({ "ctest", "--test-dir", build_dir, "--show-only=json-v1" }, { text = true }, function(res)
-    if res.code ~= 0 then
-      return done(nil, vim.trim(res.stderr or "ctest failed"))
+  vim.system(
+    { "ctest", "--test-dir", build_dir, "--show-only=json-v1" },
+    { text = true },
+    function(res)
+      if res.code ~= 0 then
+        return done(nil, vim.trim(res.stderr or "ctest failed"))
+      end
+      done(M.parse_tests(res.stdout))
     end
-    done(M.parse_tests(res.stdout))
-  end)
+  )
 end
 
 --- Escape a test name for ctest's -R regular expression, anchored to the whole name.

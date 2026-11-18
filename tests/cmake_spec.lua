@@ -33,7 +33,10 @@ describe("cmake.read_model", function()
 
   it("sorts targets by name", function()
     local model = cmake.read_model(fixtures .. "/build")
-    assert.are.same({ "app", "corelib", "docs" }, { model.targets[1].name, model.targets[2].name, model.targets[3].name })
+    assert.are.same(
+      { "app", "corelib", "docs" },
+      { model.targets[1].name, model.targets[2].name, model.targets[3].name }
+    )
   end)
 end)
 

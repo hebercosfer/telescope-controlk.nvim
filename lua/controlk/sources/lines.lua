@@ -11,7 +11,8 @@ return {
     local lnum = tonumber(line)
     local col = tonumber(column) or 1
     local name = vim.api.nvim_buf_get_name(ctx.origin_buf)
-    local text = column ~= "" and ("Line %d, column %d"):format(lnum, col) or ("Line %d"):format(lnum)
+    local text = column ~= "" and ("Line %d, column %d"):format(lnum, col)
+      or ("Line %d"):format(lnum)
     done({
       {
         text = text,

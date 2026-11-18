@@ -1,5 +1,5 @@
-local telescope = require("telescope")
 local controlk = require("controlk")
+local telescope = require("telescope")
 
 return telescope.register_extension({
   setup = function(ext_config)

@@ -61,7 +61,9 @@ local function to_items(results, kinds, tag, bufnr, passthrough)
         return kinds[symbol.kind]
       end, symbols)
     end
-    for _, location in ipairs(vim.lsp.util.symbols_to_items(symbols, bufnr, result.client.offset_encoding)) do
+    for _, location in
+      ipairs(vim.lsp.util.symbols_to_items(symbols, bufnr, result.client.offset_encoding))
+    do
       table.insert(items, {
         text = location.text,
         path = location.filename,
@@ -82,7 +84,9 @@ local function workspace_source(title, tag, kinds)
     items = function(query, ctx, done)
       local min = ctx.config.lsp.min_query
       if #query < min then
-        return done({ util.hint(("type at least %d character(s) to search symbols"):format(min), tag) })
+        return done({
+          util.hint(("type at least %d character(s) to search symbols"):format(min), tag),
+        })
       end
 
       request(ctx, "workspace/symbol", { query = query }, function(results, err)

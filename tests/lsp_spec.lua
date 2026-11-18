@@ -25,7 +25,11 @@ end)
 
 describe("lsp sources without a server", function()
   it("reports that no server supports the request", function()
-    local ctx = { origin_buf = vim.api.nvim_create_buf(false, true), config = { lsp = { min_query = 1 } }, cache = {} }
+    local ctx = {
+      origin_buf = vim.api.nvim_create_buf(false, true),
+      config = { lsp = { min_query = 1 } },
+      cache = {},
+    }
     local got
     lsp.lsp_symbols.items("Widget", ctx, function(items)
       got = items

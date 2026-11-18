@@ -52,7 +52,8 @@ describe("config.resolve", function()
   end)
 
   it("removes web engines set to false", function()
-    local cfg = config.resolve({ web = { engines = { Google = false, Mine = "https://x.test/?q=%s" } } })
+    local cfg =
+      config.resolve({ web = { engines = { Google = false, Mine = "https://x.test/?q=%s" } } })
     assert.is_nil(cfg.web.engines.Google)
     assert.are.equal("https://x.test/?q=%s", cfg.web.engines.Mine)
     assert.is_truthy(cfg.web.engines.Wikipedia)
