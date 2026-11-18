@@ -56,7 +56,7 @@ jobs:
           path: .tests/telescope-fzf-native.nvim
 
       - name: Build telescope-fzf-native.nvim
-        run: make -C .tests/telescope-fzf-native
+        run: make -C .tests/telescope-fzf-native.nvim
 
       - name: Install what the harness needs
         run: |
