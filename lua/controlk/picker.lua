@@ -36,9 +36,26 @@ end
 -- Items marked passthrough were already filtered by their source (the LSP
 -- server, a shell, a URL...), so fuzzy matching must not drop them. They keep
 -- the order the source produced.
+--
+-- The fuzzy sorter is a sorter of its own, with its own state. Telescope only
+-- runs the lifecycle (init, start, finish, destroy) of the sorter the picker
+-- holds, so pass it on. fzf-native keeps its state in init, and without it
+-- every finder call fails.
 local function make_sorter(opts)
   local fuzzy = conf.generic_sorter(opts)
   return sorters.Sorter:new({
+    init = function()
+      fuzzy:_init()
+    end,
+    start = function(_, prompt)
+      fuzzy:_start(prompt)
+    end,
+    finish = function(_, prompt)
+      fuzzy:_finish(prompt)
+    end,
+    destroy = function()
+      fuzzy:_destroy()
+    end,
     scoring_function = function(_, prompt, line, entry)
       local item = entry.value
       if item and item.passthrough then

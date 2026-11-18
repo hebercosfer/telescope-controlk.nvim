@@ -145,7 +145,9 @@ can change to remove it. Otherwise it is an error only in the CI deprecation che
   and must fail. Another calls it from a Telescope file and must pass.
 - The PR runs four legs and the aggregator, all green.
 - The harness asserts that `!`, the `cm` build and the `ct` run open a `terminal`
-  buffer, on every leg. Its current checks only confirm that the command ran.
+  buffer, on every leg. Done 2026-11-18.
+- The harness runs once with telescope-fzf-native loaded. Without that, a sorter bug
+  broke the picker in the owner's config, and the harness did not notice.
 - The README's Neovim floor moves from 0.11 to 0.10.4 only after the floor leg is
   green in CI. The README lists the four pairs and claims nothing wider. T12 is closed by this.
 
