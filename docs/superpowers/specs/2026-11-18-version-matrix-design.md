@@ -1,6 +1,6 @@
 # controlk: Neovim and Telescope version matrix
 
-Status: draft. The terminal fix is approved and implemented, uncommitted. Everything else waits for approval. Date: 2026-11-18.
+Status: approved by the owner. Built in this order: terminal fix, formatting, lint, CI, release. Date: 2026-11-18.
 
 ## Intent
 

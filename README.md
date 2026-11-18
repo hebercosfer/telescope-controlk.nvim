@@ -16,17 +16,25 @@ sources, and cmake and ctest for the CMake sources.
   dependencies = { "nvim-lua/plenary.nvim" },
 },
 {
-  dir = "~/Workspace/telescope-controlk.nvim",
-  dependencies = { "nvim-telescope/telescope.nvim" },
+  url = "git@github.com:hebercosfer/telescope-controlk.nvim.git",
+  dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
   config = function()
-    require("telescope").setup({ extensions = { controlk = {} } })
     require("telescope").load_extension("controlk")
-    vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
   end,
 },
 ```
 
-Map it in normal mode only: in insert mode Ctrl+K starts a digraph.
+The locator is mapped to Ctrl+K in normal mode when the extension loads. Choose another
+key with `keymap` in the configuration below, or set `keymap = false` to map nothing.
+A key you have mapped yourself is never taken over. The mapping is normal mode only: in
+insert mode Ctrl+K starts a digraph.
+
+A key for the locator in your Telescope configuration is a suggestion, not something the
+plugin sets:
+
+```lua
+vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+```
 
 ## Sources and prefixes
 
@@ -69,6 +77,8 @@ Every option is optional. These are the defaults:
 require("telescope").setup({
   extensions = {
     controlk = {
+      -- Normal-mode key for the locator. false maps nothing.
+      keymap = "<C-k>",
       -- Prefix per source. false removes the prefix.
       prefixes = {
         buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",

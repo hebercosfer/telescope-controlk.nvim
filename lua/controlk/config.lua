@@ -3,6 +3,9 @@ local registry = require("controlk.sources")
 local M = {}
 
 M.defaults = {
+  -- Normal-mode key for the locator, mapped when the extension loads. A key you
+  -- have mapped yourself is never taken over. false maps nothing.
+  keymap = "<C-k>",
   -- Prefix per source. A prefix must be followed by a space ("c Widget").
   -- Set a source to false to drop its prefix; it stays reachable through
   -- default_sources if it is listed there, otherwise it is unreachable.
@@ -74,6 +77,9 @@ function M.resolve(user)
   end
 
   local errors = {}
+  if cfg.keymap ~= false and (type(cfg.keymap) ~= "string" or cfg.keymap == "") then
+    table.insert(errors, ("invalid keymap: %s"):format(vim.inspect(cfg.keymap)))
+  end
   local known = registry.by_id
 
   local function is_disabled(id)
