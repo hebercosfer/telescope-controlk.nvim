@@ -176,8 +176,9 @@ Constraints).
   stylua. The formatting pass with that config changed 10 Lua files, and it is its own commit. `.stylua.toml` in the repo is the owner's file, so `stylua --check .` uses it.
 - The weekly job covers Telescope `master` and Neovim nightly, on each OS. It runs
   once a week and blocks nothing.
-- No `.luacheckrc` in this change. Telescope has one, and it is a candidate for
-  the lint task.
+- Linting: `.luacheckrc` (LuaJIT, lines up to 100 columns, like the owner's stylua).
+  `make lint` runs `stylua --check .` and luacheck over `lua` and `tests`. `make format`
+  runs stylua.
 
 ## Left to the builder
 

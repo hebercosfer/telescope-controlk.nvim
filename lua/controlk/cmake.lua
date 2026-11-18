@@ -46,11 +46,15 @@ local function backtrace_location(graph, index, source)
   return file, line
 end
 
+---@class controlk.CodeModel
+---@field source string
+---@field targets { name: string, type: string, path: string|nil, lnum: integer|nil }[]
+
 --- Turn a codemodel-v2 document (plus its per-target files) into a flat target list.
 ---@param model table decoded codemodel-v2 JSON
 ---@param reply_dir string directory holding the reply files
----@param read fun(path: string): any|nil reader, injectable for tests
----@return { source: string, targets: { name: string, type: string, path: string|nil, lnum: integer|nil }[] }
+---@param read? fun(path: string): any|nil reader, injectable for tests
+---@return controlk.CodeModel
 function M.parse_codemodel(model, reply_dir, read)
   read = read or read_json
   local source = model.paths and model.paths.source or ""

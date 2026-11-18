@@ -71,7 +71,9 @@ describe("cmake.parse_codemodel", function()
   it("skips targets whose files cannot be read", function()
     local model = {
       paths = { source = "/src" },
-      configurations = { { targets = { { jsonFile = "missing.json" }, { jsonFile = "ok.json" } } } },
+      configurations = {
+        { targets = { { jsonFile = "missing.json" }, { jsonFile = "ok.json" } } },
+      },
     }
     local parsed = cmake.parse_codemodel(model, "/reply", function(path)
       if path:match("missing") then
