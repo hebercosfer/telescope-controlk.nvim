@@ -1,0 +1,39 @@
+-- Registry of every source. A module either returns one source (with an `id`)
+-- or a table of sources keyed by their id.
+
+local modules = {
+  "buffers",
+  "files",
+  "lines",
+  "filesystem",
+  "help",
+  "commands",
+  "marks",
+  "eval",
+  "shell",
+  "web",
+  "lsp",
+  "cmake",
+}
+
+local M = { by_id = {} }
+
+for _, name in ipairs(modules) do
+  local mod = require("controlk.sources." .. name)
+  if mod.id then
+    M.by_id[mod.id] = mod
+  else
+    for id, source in pairs(mod) do
+      source.id = id
+      M.by_id[id] = source
+    end
+  end
+end
+
+---@param id string
+---@return table|nil source
+function M.get(id)
+  return M.by_id[id]
+end
+
+return M

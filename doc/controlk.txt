@@ -1,0 +1,183 @@
+*controlk.txt*  A Telescope locator in the style of Qt Creator's Locator
+
+==============================================================================
+CONTENTS                                                    *controlk-contents*
+
+  1. Introduction ............................. |controlk-intro|
+  2. Requirements ............................. |controlk-requirements|
+  3. Setup .................................... |controlk-setup|
+  4. Sources and prefixes ..................... |controlk-sources|
+  5. CMake .................................... |controlk-cmake|
+  6. Configuration ............................ |controlk-config|
+  7. Commands and Lua API ..................... |controlk-commands|
+
+==============================================================================
+1. INTRODUCTION                                                *controlk-intro*
+
+One picker for everything, selected by a prefix, in the style of Qt Creator's
+Locator (Ctrl+K). Type nothing for open buffers, project files and line jumps.
+Type a prefix and a space to switch to a source: symbols, CMake targets, help,
+commands and more.
+
+Prefixes must be followed by a space: `c Widget` searches classes for `Widget`,
+while `c` on its own searches the project. The longest matching prefix wins, so
+`cm` never triggers `c`.
+
+==============================================================================
+2. REQUIREMENTS                                            *controlk-requirements*
+
+- Neovim 0.11 or newer is the stated requirement. Neovim 0.10.4, 0.11.7 and
+  0.12.6 have been tested by hand.
+- telescope.nvim. Tested with master, v0.2.2, v0.2.0 and v0.1.9.
+- plenary.nvim.
+
+Optional:
+- ripgrep, for faster file listing. Git is the fallback.
+- A language server for the symbol sources (`:`, `c`, `m`, `.`).
+- cmake and ctest, for the CMake sources.
+
+==============================================================================
+3. SETUP                                                          *controlk-setup*
+
+With lazy.nvim, using the GitHub repository:
+>lua
+    {
+      "hebercosfer/telescope-controlk.nvim",
+      dependencies = {
+        "nvim-telescope/telescope.nvim",
+        "nvim-lua/plenary.nvim",
+      },
+      config = function()
+        require("telescope").load_extension("controlk")
+      end,
+    },
+<
+
+Then map the picker in normal mode, to a key of your choice. Ctrl+K is not used
+here, because it is window navigation in many configurations:
+>lua
+    vim.keymap.set("n", "<leader>k", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+<
+
+Map it in normal mode only. In insert mode Ctrl+K starts a digraph.
+
+==============================================================================
+4. SOURCES AND PREFIXES                                          *controlk-sources*
+
+Enter does the action listed. "Needs" lists what a source requires.
+
+  Prefix      Source                                     Enter does      Needs
+  ----------  -----------------------------------------  --------------  -------------
+  (none)      open buffers, project files, line jump     open
+  o           open buffers                               open
+  a           files in the project                       open            rg or git
+  l           line, or line:column, in current buffer    jump
+  f           file system, prefix match on names         open
+  ?           Neovim help tags                           open help
+  t           Ex commands                                fills :name
+  b           marks                                      jump
+  =           Lua expression                             copies result
+  !           shell command                              runs in terminal
+  r           web search engines                         opens the URL
+  :           workspace symbols                          jump            LSP with
+                                                                         workspace/symbol
+  c           workspace classes, structs, enums          jump            LSP
+  m           workspace functions, methods, constructors jump            LSP
+  .           symbols in the current document            jump            LSP with
+                                                                         textDocument/documentSymbol
+  cm          CMake build targets                        builds in       cmake
+                                                         terminal
+  cmo         CMake target definitions                   jump            cmake
+  ct          CTest tests                                runs in         cmake, ctest
+                                                         terminal
+
+Symbol sources need at least one character. Language servers cap an empty query
+(clangd returns 100 results, mostly from the standard library), so the picker asks
+you to type instead. The minimum is set by `lsp.min_query`.
+
+Files: `a` lists project files with rg or git. It skips hidden paths.
+
+File system: `f` lists directories and opens them with netrw. It does not create
+files.
+
+Web: `r` offers the engines in `web.engines`. Enter opens the URL in your browser.
+
+Shell: `!` runs the command in a terminal split at the bottom of the window.
+
+==============================================================================
+5. CMAKE                                                          *controlk-cmake*
+
+The CMake sources use CMake's File API, so they work with Makefiles, Ninja and
+other generators. The build directory is the first one under the project that
+contains a `CMakeCache.txt`. If none exists, the picker offers a "Configure
+project" item.
+
+Set `cmake.build_dir` to choose the directory explicitly. It can be a relative
+name such as "build", or an absolute path.
+
+==============================================================================
+6. CONFIGURATION                                                *controlk-config*
+
+Every option is optional. These are the defaults, set through `telescope.setup`:
+>lua
+    require("telescope").setup({
+      extensions = {
+        controlk = {
+          -- Prefix per source. false removes the prefix.
+          prefixes = {
+            buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",
+            commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
+            lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+            cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
+          },
+          -- Sources merged when no prefix is typed.
+          default_sources = { "buffers", "files", "lines" },
+          -- Sources removed entirely.
+          disabled = {},
+          lsp = { min_query = 1 },
+          cmake = { build_dir = nil }, -- or "build", or an absolute path
+          web = {
+            engines = {
+              Google = "https://www.google.com/search?q=%s",
+              DuckDuckGo = "https://duckduckgo.com/?q=%s",
+              Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",
+              cppreference = "https://en.cppreference.com/mwiki/index.php?search=%s",
+            },
+          },
+        },
+      },
+    })
+<
+
+Examples:
+>lua
+    extensions = {
+      controlk = {
+        prefixes = { lsp_classes = "C", eval = false }, -- C for classes, no Lua prefix
+        default_sources = { "buffers", "files" },       -- drop the line jump
+        disabled = { "web" },
+        web = { engines = { Google = false, Neovim = "https://neovim.io/search/?q=%s" } },
+      },
+    },
+<
+
+A prefix is removed with `false`. A web engine is removed the same way. Each
+engine's value is a URL with `%s` where the query goes.
+
+Configuration problems (duplicate or invalid prefixes, unknown source ids) are
+reported as warnings when the extension is set up.
+
+==============================================================================
+7. COMMANDS AND LUA API                                        *controlk-commands*
+
+`:Telescope controlk`
+    Open the locator. Same as calling the Lua function below.
+
+Lua:
+>lua
+    require("controlk").open(opts)   -- opts: telescope picker options
+    require("controlk").setup(opts)  -- the same table as extensions.controlk
+    require("controlk").config()     -- the resolved configuration
+<
+
+vim:tw=78:ts=8:ft=help:norl:

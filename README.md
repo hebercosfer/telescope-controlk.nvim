@@ -1,0 +1,132 @@
+# telescope-controlk.nvim
+
+One picker for everything, selected by a prefix, in the style of Qt Creator's Locator (Ctrl+K).
+Type nothing for open buffers, project files and line jumps. Type a prefix and a space to switch
+to a source: symbols, CMake targets, help, commands and more.
+
+Requirements: Neovim 0.11+ (tested on 0.12), telescope.nvim (master), plenary.nvim.
+Optional: ripgrep (faster file listing; git is the fallback), a language server for symbol
+sources, and cmake and ctest for the CMake sources.
+
+## Install
+
+```lua
+{
+  "nvim-telescope/telescope.nvim",
+  dependencies = { "nvim-lua/plenary.nvim" },
+},
+{
+  dir = "~/Workspace/telescope-controlk.nvim",
+  dependencies = { "nvim-telescope/telescope.nvim" },
+  config = function()
+    require("telescope").setup({ extensions = { controlk = {} } })
+    require("telescope").load_extension("controlk")
+    vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+  end,
+},
+```
+
+Map it in normal mode only: in insert mode Ctrl+K starts a digraph.
+
+## Sources and prefixes
+
+| Prefix | Source | Enter does | Needs |
+|---|---|---|---|
+| (none) | open buffers, project files, line jump | open | |
+| `o` | open buffers | open | |
+| `a` | files in the project | open | rg or git |
+| `l` | line, or `line:column`, in the current buffer | jump | |
+| `f` | file system, prefix match on names | open | |
+| `?` | Neovim help tags | open help | |
+| `t` | Ex commands | fills `:name ` for arguments | |
+| `b` | marks | jump | |
+| `=` | Lua expression | copies the result | |
+| `!` | shell command | runs in a terminal | |
+| `r` | web search engines | opens the URL | |
+| `:` | workspace symbols | jump | LSP with `workspace/symbol` |
+| `c` | workspace classes, structs, enums | jump | LSP |
+| `m` | workspace functions, methods, constructors | jump | LSP |
+| `.` | symbols in the current document | jump | LSP with `textDocument/documentSymbol` |
+| `cm` | CMake build targets | builds in a terminal | cmake |
+| `cmo` | CMake target definitions | jump | cmake |
+| `ct` | CTest tests | runs in a terminal | cmake, ctest |
+
+Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
+searches the project. The longest matching prefix wins, so `cm` never triggers `c`.
+
+Symbol sources need at least one character: language servers cap an empty query (clangd returns
+100 results, mostly from the standard library), so the picker asks you to type instead.
+
+CMake sources use CMake's File API, so they work with Makefiles, Ninja and other generators. The
+build directory is the first one under the project that contains a `CMakeCache.txt`. If none
+exists, the picker offers a "Configure project" item.
+
+## Configuration
+
+Every option is optional. These are the defaults:
+
+```lua
+require("telescope").setup({
+  extensions = {
+    controlk = {
+      -- Prefix per source. false removes the prefix.
+      prefixes = {
+        buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",
+        commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
+        lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+        cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
+      },
+      -- Sources merged when no prefix is typed.
+      default_sources = { "buffers", "files", "lines" },
+      -- Sources removed entirely.
+      disabled = {},
+      lsp = { min_query = 1 },
+      cmake = { build_dir = nil }, -- or "build", or an absolute path
+      web = {
+        engines = {
+          Google = "https://www.google.com/search?q=%s",
+          DuckDuckGo = "https://duckduckgo.com/?q=%s",
+          Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",
+          cppreference = "https://en.cppreference.com/mwiki/index.php?search=%s",
+        },
+      },
+    },
+  },
+})
+```
+
+Examples:
+
+```lua
+extensions = {
+  controlk = {
+    prefixes = { lsp_classes = "C", eval = false },   -- C for classes, no Lua prefix
+    default_sources = { "buffers", "files" },          -- drop the line jump from the default view
+    disabled = { "web" },
+    web = { engines = { Google = false, Neovim = "https://neovim.io/search/?q=%s" } },
+  },
+},
+```
+
+Configuration problems (duplicate or invalid prefixes, unknown source ids) are reported as warnings
+when the extension is set up.
+
+## Tests
+
+```sh
+nvim --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua' }"
+```
+
+The parsers (prompt, configuration, CMake model, CTest output, LSP kinds) are covered by unit tests
+with real CMake and CTest output as fixtures.
+
+The picker is covered by an integration harness that types into the real Telescope prompt, against
+clangd and a sample CMake project. It needs clangd, cmake (Ninja) and ctest:
+
+```sh
+SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
+SESSION=config nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
+```
+
+The harness works in a temporary copy of `tests/integration/fixtures`, so build output and clangd's
+cache never land in the repository.
