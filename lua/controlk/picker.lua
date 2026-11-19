@@ -170,6 +170,42 @@ local function set_cutie_hidden(picker, hidden)
   end
 end
 
+-- Sets up cutie for one prompt buffer: the list and preview hidden while the prompt is empty,
+-- also after a resize. Runs for every find, so a picker rebuilt by :Telescope resume gets it.
+local function attach_cutie(prompt_bufnr)
+  local function current()
+    local p = action_state.get_current_picker(prompt_bufnr)
+    if p and vim.api.nvim_win_is_valid(p.prompt_win) then
+      return p
+    end
+  end
+  local p = current()
+  if p then
+    set_cutie_hidden(p, p:_get_prompt() == "")
+  end
+  -- Telescope's own VimResized handler re-sets every window, and a preview it drops and brings
+  -- back is a new, visible window. Ours runs after it and hides them again.
+  local group = vim.api.nvim_create_augroup("controlk_cutie_" .. prompt_bufnr, {})
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = group,
+    callback = function()
+      vim.schedule(function()
+        local live = current()
+        if live then
+          set_cutie_hidden(live, live:_get_prompt() == "")
+        end
+      end)
+    end,
+  })
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    group = group,
+    buffer = prompt_bufnr,
+    callback = function()
+      vim.api.nvim_del_augroup_by_id(group)
+    end,
+  })
+end
+
 -- Applies the style to the picker options. Telescope's own layout_strategy (or a theme= on the
 -- command line, which sets one) wins: it is what Telescope users already type.
 ---@return table opts
@@ -217,28 +253,57 @@ function M.open(opts, cfg)
   }
 
   local current = DEFAULT
-  -- Declared first: on_input_filter_cb below refers to it.
-  local picker
-  picker = pickers.new(opts, {
+  -- The prompt buffer of the picker on screen. :Telescope resume builds a new picker from this
+  -- one's options, so the callbacks look it up instead of holding the first picker.
+  local live_prompt
+  local function cutie_empty(prompt_bufnr)
+    if not is_cutie then
+      return false
+    end
+    local p = action_state.get_current_picker(prompt_bufnr)
+    return p ~= nil and p:_get_prompt() == ""
+  end
+
+  local function on_input(prompt)
+    local live = is_cutie and live_prompt and action_state.get_current_picker(live_prompt)
+    if live then
+      set_cutie_hidden(live, prompt == "")
+    end
+    local id, query = parse.parse(prompt, cfg.prefix_map)
+    id = id or DEFAULT
+    local result = { prompt = query }
+    if id ~= current then
+      current = id
+      result.updated_finder = finder_for(id, ctx)
+    end
+    return result
+  end
+
+  local picker = pickers.new(opts, {
     prompt_title = "Locator",
     finder = finder_for(DEFAULT, ctx),
     sorter = make_sorter(opts),
     previewer = conf.grep_previewer(opts),
-    on_input_filter_cb = function(prompt)
+    on_input_filter_cb = on_input,
+    attach_mappings = function(bufnr)
       if is_cutie then
-        set_cutie_hidden(picker, prompt == "")
+        live_prompt = bufnr
+        -- After find has registered the picker for this buffer.
+        vim.schedule(function()
+          if vim.api.nvim_buf_is_valid(bufnr) then
+            attach_cutie(bufnr)
+          end
+        end)
+        -- With an empty cutie prompt nothing is visible, so the open and split keys act on
+        -- nothing rather than on a hidden row.
+        for _, name in ipairs({ "select_horizontal", "select_vertical", "select_tab" }) do
+          actions[name]:replace_if(cutie_empty, function() end)
+        end
       end
-      local id, query = parse.parse(prompt, cfg.prefix_map)
-      id = id or DEFAULT
-      local result = { prompt = query }
-      if id ~= current then
-        current = id
-        result.updated_finder = finder_for(id, ctx)
-      end
-      return result
-    end,
-    attach_mappings = function()
       actions.select_default:replace(function(prompt_bufnr)
+        if cutie_empty(prompt_bufnr) then
+          return
+        end
         local entry = action_state.get_selected_entry()
         -- An item with a prompt (the ? list) rewrites the input and keeps the picker open.
         -- on_input_filter_cb then switches to the source that prompt selects.
@@ -254,30 +319,14 @@ function M.open(opts, cfg)
       return true
     end,
   })
+  -- :Telescope resume rebuilds the picker from this one, but reads on_input_filter_cb while
+  -- Telescope keeps it as _on_input_filter_cb. Without the public key a resumed locator
+  -- would stop switching sources when a prefix is typed.
+  picker.on_input_filter_cb = on_input
   picker:find()
-
   if is_cutie then
+    -- At once, so the list never flashes on open; attach_cutie repeats it after find.
     set_cutie_hidden(picker, true)
-    -- Telescope's own VimResized handler re-sets every window, which shows them again. Ours
-    -- runs after it and hides them again while the prompt is empty.
-    local group = vim.api.nvim_create_augroup("controlk_cutie_" .. picker.prompt_bufnr, {})
-    vim.api.nvim_create_autocmd("VimResized", {
-      group = group,
-      callback = function()
-        vim.schedule(function()
-          if vim.api.nvim_buf_is_valid(picker.prompt_bufnr) then
-            set_cutie_hidden(picker, picker:_get_prompt() == "")
-          end
-        end)
-      end,
-    })
-    vim.api.nvim_create_autocmd("BufWipeout", {
-      group = group,
-      buffer = picker.prompt_bufnr,
-      callback = function()
-        vim.api.nvim_del_augroup_by_id(group)
-      end,
-    })
   end
 end
 

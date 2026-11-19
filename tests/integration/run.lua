@@ -161,6 +161,25 @@ local function cutie_checks()
 
   require("controlk").setup({ style = "cutie" })
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  -- Nothing is visible yet, so the open and split keys must not act on a hidden row.
+  local wins = #vim.api.nvim_tabpage_list_wins(0)
+  for _, action in ipairs({ "select_default", "select_vertical", "select_horizontal" }) do
+    pcall(actions[action], prompt)
+    vim.wait(100, function()
+      return false
+    end, 20)
+  end
+  check(
+    "keys on an empty cutie prompt act on nothing",
+    vim.api.nvim_buf_is_valid(prompt)
+      and vim.api.nvim_get_current_buf() == prompt
+      and #vim.api.nvim_tabpage_list_wins(0) == wins,
+    vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
+  )
+  if not vim.api.nvim_buf_is_valid(prompt) or vim.api.nvim_get_current_buf() ~= prompt then
+    vim.cmd("silent! only")
+    picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  end
   check(
     "cutie hides the list and the preview while the prompt is empty",
     hidden(picker.results_win)
@@ -207,6 +226,29 @@ local function cutie_checks()
     vim.inspect({ preview = picker.preview_win })
   )
   close(prompt)
+
+  -- :Telescope resume builds a new picker from the cached one; it must hide the same way.
+  picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  type_text(picker, prompt, "c")
+  close(prompt)
+  require("telescope.builtin").resume()
+  vim.wait(300, function()
+    return false
+  end, 20)
+  prompt = vim.api.nvim_get_current_buf()
+  picker = state.get_current_picker(prompt)
+  if picker then
+    type_text(picker, prompt, "")
+    check(
+      "after resume, an empty prompt still hides the list",
+      hidden(picker.results_win) and hidden(picker.preview_win)
+    )
+    local resumed = type_text(picker, prompt, "o ")
+    check("after resume, a prefix still switches the source", only_tag(resumed, "buffer"))
+    close(prompt)
+  else
+    check("after resume, an empty prompt still hides the list", false, "resume opened nothing")
+  end
 
   require("controlk").setup({ style = "default" })
   vim.cmd.edit(FIX .. "/proj/src/widget.h")

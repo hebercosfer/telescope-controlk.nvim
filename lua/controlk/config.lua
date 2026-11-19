@@ -131,6 +131,18 @@ function M.resolve(user)
   if message then
     table.insert(errors, message)
   end
+  if type(cfg.cutie) ~= "table" then
+    table.insert(errors, ("invalid cutie: %s"):format(vim.inspect(cfg.cutie)))
+    cfg.cutie = vim.deepcopy(M.defaults.cutie)
+  end
+  if cfg.layout_config ~= nil and type(cfg.layout_config) ~= "table" then
+    table.insert(errors, ("invalid layout_config: %s"):format(vim.inspect(cfg.layout_config)))
+    cfg.layout_config = nil
+  end
+  if type(cfg.cutie.preview) ~= "boolean" then
+    table.insert(errors, ("invalid cutie.preview: %s"):format(vim.inspect(cfg.cutie.preview)))
+    cfg.cutie.preview = true
+  end
   if cfg.cutie.width ~= "auto" and not is_positive_integer(cfg.cutie.width) then
     table.insert(errors, ("invalid cutie.width: %s"):format(vim.inspect(cfg.cutie.width)))
     cfg.cutie.width = CUTIE_WIDTH
