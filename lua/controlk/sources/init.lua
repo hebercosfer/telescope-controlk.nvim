@@ -7,6 +7,7 @@ local modules = {
   "lines",
   "filesystem",
   "help",
+  "prefixes",
   "commands",
   "marks",
   "eval",

@@ -188,8 +188,32 @@ local function lsp_and_cmake()
   rows = type_text(picker, prompt, "t Telescope")
   check("t finds Ex commands", has_display(rows, "Telescope"))
 
-  rows = type_text(picker, prompt, "? lua-guide")
-  check("? finds help tags", has_tag(rows, "help") and #rows > 0)
+  rows = type_text(picker, prompt, "h lua-guide")
+  check("h finds help tags", has_tag(rows, "help") and #rows > 0)
+
+  rows = type_text(picker, prompt, "? ")
+  check("? lists the prefixes", has_tag(rows, "c") and has_display(rows, "Workspace classes"))
+  check("? does not list itself", not has_tag(rows, "?"))
+
+  -- Enter on a prefix goes through Telescope's real select action: the input becomes
+  -- "c " and the picker stays open on the classes source.
+  for _ = 1, #rows do
+    local entry = state.get_selected_entry()
+    if entry and entry.value.tag == "c" then
+      break
+    end
+    actions.move_selection_next(prompt)
+  end
+  actions.select_default(prompt)
+  settle(picker)
+  local input = vim.api.nvim_buf_get_lines(prompt, 0, 1, false)[1] or ""
+  check(
+    "enter on a prefix puts it in the prompt",
+    input == picker.prompt_prefix .. "c " and vim.api.nvim_buf_is_valid(prompt),
+    vim.inspect(input)
+  )
+  rows = rows_of(picker)
+  check("the picker then shows that source", #rows == 1 and rows[1].value.hint == true)
 
   rows = type_text(picker, prompt, "f src/")
   check("f browses directories", has_display(rows, "widget.h"))

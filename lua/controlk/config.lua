@@ -14,7 +14,9 @@ M.defaults = {
     files = "a",
     lines = "l",
     filesystem = "f",
-    help = "?",
+    help = "h",
+    -- Lists the prefixes; picking one puts it in the prompt.
+    prefixes = "?",
     commands = "t",
     marks = "b",
     eval = "=",
