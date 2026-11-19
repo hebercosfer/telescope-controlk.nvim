@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (nvim ${{ matrix.neovim }}, telescope ${{ matrix.telescope.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The floor: the first Telescope release whose minimum is Neovim 0.10.4.
+          - neovim: v0.10.4
+            telescope: { name: v0.2.0, ref: v0.2.0 }
+          # The newest 0.1.x release, on Neovim 0.10.
+          - neovim: v0.10.4
+            telescope: { name: v0.1.9, ref: v0.1.9 }
+          - neovim: v0.11.7
+            telescope: { name: v0.2.2, ref: v0.2.2 }
+          # The current pair: Telescope pinned at the commit the owner tracks.
+          - neovim: v0.12.6
+            telescope: { name: master, ref: 1e1bab730218eaf97fce743be3f56e51075928ac }
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned, so that a change upstream cannot turn this repository red on its own.
+      - name: Check out plenary.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-lua/plenary.nvim
+          ref: 74b06c6c75e4eeb3108ec01852001636d85a932b
+          path: .tests/plenary.nvim
+
+      - name: Check out telescope.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-telescope/telescope.nvim
+          ref: ${{ matrix.telescope.ref }}
+          path: .tests/telescope.nvim
+
+      - name: Check out telescope-fzf-native.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-telescope/telescope-fzf-native.nvim
+          ref: b25b749b9db64d375d782094e2b9dce53ad53a40
+          path: .tests/telescope-fzf-native.nvim
+
+      - name: Build telescope-fzf-native.nvim
+        run: make -C .tests/telescope-fzf-native.nvim
+
+      - name: Install what the harness needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clangd ripgrep ninja-build cmake
+
+      # Unpacks under TMPDIR, then renames into the home directory. runner.temp keeps
+      # that rename on one filesystem (see floating-claude.nvim's ci.yml).
+      - uses: rhysd/action-setup-vim@v1
+        env:
+          TMPDIR: ${{ runner.temp }}
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+
+      - name: Record the versions
+        run: |
+          nvim --version | head -1
+          clangd --version | head -1
+          cmake --version | head -1
+
+      - name: Unit tests
+        env:
+          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
+        run: make test
+
+      - name: Integration tests
+        env:
+          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
+          TELESCOPE_DIR: ${{ github.workspace }}/.tests/telescope.nvim
+          FZF_DIR: ${{ github.workspace }}/.tests/telescope-fzf-native.nvim
+        run: make test-integration
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install stylua
+        uses: JohnnyMorganz/stylua-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: v2.6.0
+          args: --version
+
+      - name: Install luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+          sudo luarocks install luacheck
+
+      - name: Lint
+        run: make lint
+
+  # One check whose name does not change with the matrix, so a branch ruleset can
+  # require it. It fails unless every job above passed.
+  tests:
+    name: tests
+    needs: [test, lint]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every job passed
+        run: |
+          echo "test: ${{ needs.test.result }}, lint: ${{ needs.lint.result }}"
+          [ "${{ needs.test.result }}" = "success" ] && [ "${{ needs.lint.result }}" = "success" ]
