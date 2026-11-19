@@ -2,10 +2,39 @@ local registry = require("controlk.sources")
 
 local M = {}
 
+-- Every style name and what kind of style it is. A layout style sets Telescope's
+-- layout_strategy; a theme style applies telescope.themes.get_<name>; "default" sets neither.
+M.STYLES = {
+  default = "default",
+  horizontal = "layout",
+  vertical = "layout",
+  flex = "layout",
+  center = "layout",
+  bottom_pane = "layout",
+  current_buffer = "layout",
+  ivy = "theme",
+  dropdown = "theme",
+  cursor = "theme",
+  cutie = "cutie",
+}
+
+-- Styles that work but do not suit a locator: the list is too narrow, it follows the
+-- cursor, or it covers the window you work in.
+local UNFIT = { cursor = true, current_buffer = true }
+
+local CUTIE_WIDTH, CUTIE_HEIGHT = 40, 15
+
 M.defaults = {
   -- Normal-mode key for the locator, mapped when the extension loads. A key you
   -- have mapped yourself is never taken over. false maps nothing.
   keymap = "<C-k>",
+  -- "default" (Telescope's own defaults), a Telescope layout or theme, or "cutie".
+  style = "default",
+  -- Passed to Telescope as is, for the Telescope styles. Ignored by cutie.
+  layout_config = nil,
+  -- The Qt Creator style. width: columns of the prompt and the list, or "auto" to match a
+  -- sidebar split on the left. height: rows of the list.
+  cutie = { width = CUTIE_WIDTH, height = CUTIE_HEIGHT, preview = true },
   -- Prefix per source. A prefix must be followed by a space ("c Widget").
   -- Set a source to false to drop its prefix; it stays reachable through
   -- default_sources if it is listed there, otherwise it is unreachable.
@@ -54,6 +83,24 @@ M.defaults = {
   },
 }
 
+--- The style to use for a name, and a warning to show, if any.
+---@param name any
+---@return string style
+---@return string|nil message
+function M.check_style(name)
+  if M.STYLES[name] == nil then
+    return "default", ("unknown style '%s'; using 'default'"):format(tostring(name))
+  end
+  if UNFIT[name] then
+    return name, ("style '%s' does not suit a locator; see :h controlk-styles"):format(name)
+  end
+  return name, nil
+end
+
+local function is_positive_integer(value)
+  return type(value) == "number" and value >= 1 and value == math.floor(value)
+end
+
 local function is_valid_prefix(prefix)
   return type(prefix) == "string" and prefix ~= "" and not prefix:find("%s")
 end
@@ -79,6 +126,19 @@ function M.resolve(user)
   end
 
   local errors = {}
+  local style, message = M.check_style(cfg.style)
+  cfg.style = style
+  if message then
+    table.insert(errors, message)
+  end
+  if cfg.cutie.width ~= "auto" and not is_positive_integer(cfg.cutie.width) then
+    table.insert(errors, ("invalid cutie.width: %s"):format(vim.inspect(cfg.cutie.width)))
+    cfg.cutie.width = CUTIE_WIDTH
+  end
+  if not is_positive_integer(cfg.cutie.height) then
+    table.insert(errors, ("invalid cutie.height: %s"):format(vim.inspect(cfg.cutie.height)))
+    cfg.cutie.height = CUTIE_HEIGHT
+  end
   if cfg.keymap ~= false and (type(cfg.keymap) ~= "string" or cfg.keymap == "") then
     table.insert(errors, ("invalid keymap: %s"):format(vim.inspect(cfg.keymap)))
   end
