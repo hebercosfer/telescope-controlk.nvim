@@ -45,7 +45,8 @@ vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locat
 | `a` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
 | `f` | file system, prefix match on names | open | |
-| `?` | Neovim help tags | open help | |
+| `?` | the prefixes in this table, with what each one searches | puts the prefix in the prompt | |
+| `h` | Neovim help tags | open help | |
 | `t` | Ex commands | fills `:name ` for arguments | |
 | `b` | marks | jump | |
 | `=` | Lua expression | copies the result | |
@@ -58,6 +59,10 @@ vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locat
 | `cm` | CMake build targets | builds in a terminal | cmake |
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
+
+Type `? ` when you do not remember a prefix. Enter on an entry replaces `? ` with that prefix
+and switches to its source, so `? ` then Enter on `c` leaves `c ` in the prompt, ready for a class
+name.
 
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
 searches the project. The longest matching prefix wins, so `cm` never triggers `c`.
@@ -81,7 +86,8 @@ require("telescope").setup({
       keymap = "<C-k>",
       -- Prefix per source. false removes the prefix.
       prefixes = {
-        buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",
+        buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
+        prefixes = "?",
         commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
         lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
         cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",

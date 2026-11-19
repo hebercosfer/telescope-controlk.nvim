@@ -72,7 +72,9 @@ Enter does the action listed. "Needs" lists what a source requires.
   a           files in the project                       open            rg or git
   l           line, or line:column, in current buffer    jump
   f           file system, prefix match on names         open
-  ?           Neovim help tags                           open help
+  ?           the prefixes, with their sources           puts prefix in
+                                                         the prompt
+  h           Neovim help tags                           open help
   t           Ex commands                                fills :name
   b           marks                                      jump
   =           Lua expression                             copies result
@@ -93,6 +95,9 @@ Enter does the action listed. "Needs" lists what a source requires.
 Symbol sources need at least one character. Language servers cap an empty query
 (clangd returns 100 results, mostly from the standard library), so the picker asks
 you to type instead. The minimum is set by `lsp.min_query`.
+
+Prefix list: `?` lists every configured prefix. Enter replaces `? ` with the
+chosen prefix and switches to that source; the picker stays open.
 
 Files: `a` lists project files with rg or git. It skips hidden paths.
 
@@ -126,7 +131,8 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           keymap = "<C-k>",
           -- Prefix per source. false removes the prefix.
           prefixes = {
-            buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",
+            buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
+            prefixes = "?",
             commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
             lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
             cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",

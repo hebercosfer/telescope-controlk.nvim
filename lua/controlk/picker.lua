@@ -139,6 +139,12 @@ function M.open(opts, cfg)
     attach_mappings = function()
       actions.select_default:replace(function(prompt_bufnr)
         local entry = action_state.get_selected_entry()
+        -- An item with a prompt (the ? list) rewrites the input and keeps the picker open.
+        -- on_input_filter_cb then switches to the source that prompt selects.
+        if entry and entry.value.prompt then
+          action_state.get_current_picker(prompt_bufnr):set_prompt(entry.value.prompt)
+          return
+        end
         actions.close(prompt_bufnr)
         if entry then
           util.act(entry.value)
