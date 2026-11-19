@@ -8,7 +8,10 @@ local pickers = require("telescope.pickers")
 local sorters = require("telescope.sorters")
 
 local cmake = require("controlk.cmake")
+local config = require("controlk.config")
+local cutie = require("controlk.cutie")
 local parse = require("controlk.parse")
+local prefixes = require("controlk.sources.prefixes")
 local registry = require("controlk.sources")
 local util = require("controlk.util")
 
@@ -30,8 +33,10 @@ local function make_entry(item)
     filename = item.path,
     -- Telescope previews entry.path, then entry.filename, then entry.value. A row with no file
     -- (prefixes, commands, web...) would hand it the item table, which fails in path_expand.
-    -- An empty path is what its previewers treat as "nothing to preview".
-    path = item.path or (item.bufnr == nil and "" or nil),
+    -- An empty path is what its previewers treat as "nothing to preview". A buffer without a
+    -- name gets "[No Name]", as Telescope's own buffer picker does: its previewer then shows
+    -- the buffer's lines (master) or nothing (v0.1.9), never an error.
+    path = item.path or (item.bufnr ~= nil and "[No Name]" or ""),
     lnum = item.lnum,
     col = item.col,
   }
@@ -62,6 +67,11 @@ local function make_sorter(opts)
     end,
     scoring_function = function(_, prompt, line, entry)
       local item = entry.value
+      -- Telescope ranks lower scores first. Pinned rows (prefix suggestions) score below any
+      -- fuzzy match, in their own order.
+      if item and item.pinned then
+        return (entry.index or 1) * 1e-6
+      end
       if item and item.passthrough then
         return entry.index or 1
       end
@@ -71,7 +81,8 @@ local function make_sorter(opts)
 end
 
 local function run_default(query, ctx, done)
-  local collected = {}
+  -- A partly typed prefix ("c") lists the prefixes it could become before the usual results.
+  local collected = prefixes.matching(query, ctx.config.prefix_map)
   local function step(index)
     local id = ctx.config.default_sources[index]
     if not id then
@@ -111,9 +122,128 @@ local function finder_for(id, ctx)
   })
 end
 
+-- The cutie layout: window positions from cutie.geometry, given to Telescope as the picker's
+-- get_window_options. A box is 0-based and includes the border; Telescope wants the content's
+-- 1-based line and column.
+local function cutie_window_options(cfg)
+  local wins = {}
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    table.insert(wins, {
+      col = vim.api.nvim_win_get_position(win)[2],
+      width = vim.api.nvim_win_get_width(win),
+      floating = vim.api.nvim_win_get_config(win).relative ~= "",
+    })
+  end
+  -- Measured once, when the locator opens: its own windows must not count as a sidebar.
+  local width = cutie.resolve_width(cfg.cutie.width, wins, vim.o.columns)
+
+  return function(picker)
+    local g = cutie.geometry({
+      columns = vim.o.columns,
+      lines = vim.o.lines,
+      cmdheight = vim.o.cmdheight,
+      laststatus = vim.o.laststatus,
+    }, { width = width, height = cfg.cutie.height, preview = cfg.cutie.preview })
+    local initial = require("telescope.pickers.window").get_initial_window_options(picker)
+    local function place(win, box)
+      win.line, win.col = box.row + 2, box.col + 2
+      win.width, win.height = box.width - 2, box.height - 2
+      return win
+    end
+    return {
+      prompt = place(initial.prompt, g.prompt),
+      results = place(initial.results, g.results),
+      preview = picker.previewer and g.preview and place(initial.preview, g.preview) or false,
+    }
+  end
+end
+
+-- Hides or shows cutie's list and preview, borders included. The prompt always stays.
+local function set_cutie_hidden(picker, hidden)
+  for _, win in ipairs({
+    picker.results_win,
+    picker.results_border and picker.results_border.winid,
+    picker.preview_win,
+    picker.preview_border and picker.preview_border.winid,
+  }) do
+    if win and vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_win_set_config(win, { hide = hidden })
+    end
+  end
+end
+
+-- Sets up cutie for one prompt buffer: the list and preview hidden while the prompt is empty,
+-- also after a resize. Runs for every find, so a picker rebuilt by :Telescope resume gets it.
+local function attach_cutie(prompt_bufnr)
+  local function current()
+    local p = action_state.get_current_picker(prompt_bufnr)
+    if p and vim.api.nvim_win_is_valid(p.prompt_win) then
+      return p
+    end
+  end
+  local p = current()
+  if p then
+    set_cutie_hidden(p, p:_get_prompt() == "")
+  end
+  -- Telescope's own VimResized handler re-sets every window, and a preview it drops and brings
+  -- back is a new, visible window. Ours runs after it and hides them again.
+  local group = vim.api.nvim_create_augroup("controlk_cutie_" .. prompt_bufnr, {})
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = group,
+    callback = function()
+      vim.schedule(function()
+        local live = current()
+        if live then
+          set_cutie_hidden(live, live:_get_prompt() == "")
+        end
+      end)
+    end,
+  })
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    group = group,
+    buffer = prompt_bufnr,
+    callback = function()
+      vim.api.nvim_del_augroup_by_id(group)
+    end,
+  })
+end
+
+-- Applies the style to the picker options. Telescope's own layout_strategy (or a theme= on the
+-- command line, which sets one) wins: it is what Telescope users already type.
+---@return table opts
+---@return string style
+local function apply_style(opts, cfg)
+  local style, message = config.check_style(opts.style or cfg.style)
+  if opts.style and message then
+    -- The config's own warnings were shown by setup; only a per-call style is new here.
+    vim.notify("controlk: " .. message, vim.log.levels.WARN)
+  end
+  opts.style = nil
+  if opts.layout_strategy then
+    return opts, style
+  end
+  if cfg.layout_config then
+    opts.layout_config =
+      vim.tbl_deep_extend("force", vim.deepcopy(cfg.layout_config), opts.layout_config or {})
+  end
+  local kind = config.STYLES[style]
+  if kind == "cutie" then
+    opts.sorting_strategy = "descending"
+    opts.get_window_options = cutie_window_options(cfg)
+  elseif kind == "layout" then
+    opts.layout_strategy = style
+  elseif kind == "theme" then
+    opts = require("telescope.themes")["get_" .. style](opts)
+  end
+  return opts, style
+end
+
 ---@param opts table telescope picker options
 ---@param cfg table resolved controlk configuration
 function M.open(opts, cfg)
+  local style
+  opts, style = apply_style(opts, cfg)
+  local is_cutie = style == "cutie" and opts.get_window_options ~= nil
   local origin_buf = vim.api.nvim_get_current_buf()
   local ctx = {
     config = cfg,
@@ -125,23 +255,57 @@ function M.open(opts, cfg)
   }
 
   local current = DEFAULT
+  -- The prompt buffer of the picker on screen. :Telescope resume builds a new picker from this
+  -- one's options, so the callbacks look it up instead of holding the first picker.
+  local live_prompt
+  local function cutie_empty(prompt_bufnr)
+    if not is_cutie then
+      return false
+    end
+    local p = action_state.get_current_picker(prompt_bufnr)
+    return p ~= nil and p:_get_prompt() == ""
+  end
+
+  local function on_input(prompt)
+    local live = is_cutie and live_prompt and action_state.get_current_picker(live_prompt)
+    if live then
+      set_cutie_hidden(live, prompt == "")
+    end
+    local id, query = parse.parse(prompt, cfg.prefix_map)
+    id = id or DEFAULT
+    local result = { prompt = query }
+    if id ~= current then
+      current = id
+      result.updated_finder = finder_for(id, ctx)
+    end
+    return result
+  end
+
   local picker = pickers.new(opts, {
     prompt_title = "Locator",
     finder = finder_for(DEFAULT, ctx),
     sorter = make_sorter(opts),
     previewer = conf.grep_previewer(opts),
-    on_input_filter_cb = function(prompt)
-      local id, query = parse.parse(prompt, cfg.prefix_map)
-      id = id or DEFAULT
-      local result = { prompt = query }
-      if id ~= current then
-        current = id
-        result.updated_finder = finder_for(id, ctx)
+    on_input_filter_cb = on_input,
+    attach_mappings = function(bufnr)
+      if is_cutie then
+        live_prompt = bufnr
+        -- After find has registered the picker for this buffer.
+        vim.schedule(function()
+          if vim.api.nvim_buf_is_valid(bufnr) then
+            attach_cutie(bufnr)
+          end
+        end)
+        -- With an empty cutie prompt nothing is visible, so the open and split keys act on
+        -- nothing rather than on a hidden row.
+        for _, name in ipairs({ "select_horizontal", "select_vertical", "select_tab" }) do
+          actions[name]:replace_if(cutie_empty, function() end)
+        end
       end
-      return result
-    end,
-    attach_mappings = function()
       actions.select_default:replace(function(prompt_bufnr)
+        if cutie_empty(prompt_bufnr) then
+          return
+        end
         local entry = action_state.get_selected_entry()
         -- An item with a prompt (the ? list) rewrites the input and keeps the picker open.
         -- on_input_filter_cb then switches to the source that prompt selects.
@@ -157,7 +321,15 @@ function M.open(opts, cfg)
       return true
     end,
   })
+  -- :Telescope resume rebuilds the picker from this one, but reads on_input_filter_cb while
+  -- Telescope keeps it as _on_input_filter_cb. Without the public key a resumed locator
+  -- would stop switching sources when a prefix is typed.
+  picker.on_input_filter_cb = on_input
   picker:find()
+  if is_cutie then
+    -- At once, so the list never flashes on open; attach_cutie repeats it after find.
+    set_cutie_hidden(picker, true)
+  end
 end
 
 return M

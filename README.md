@@ -60,9 +60,13 @@ vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locat
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
 
-Type `? ` when you do not remember a prefix. Enter on an entry replaces `? ` with that prefix
-and switches to its source, so `? ` then Enter on `c` leaves `c ` in the prompt, ready for a class
-name.
+Type `?` when you do not remember a prefix: the list shows at once, without a space. Enter on an
+entry replaces `?` with that prefix and switches to its source, so `?` then Enter on `c` leaves
+`c ` in the prompt, ready for a class name.
+
+A partly typed prefix suggests the prefixes it could become. `c` lists `c`, `cm`, `cmo` and `ct`
+first, then the buffers, files and lines that match `c`, so nothing is lost while you decide.
+Enter on a suggestion works like Enter in the `?` list.
 
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
 searches the project. The longest matching prefix wins, so `cm` never triggers `c`.
@@ -74,6 +78,55 @@ CMake sources use CMake's File API, so they work with Makefiles, Ninja and other
 build directory is the first one under the project that contains a `CMakeCache.txt`. If none
 exists, the picker offers a "Configure project" item.
 
+## Styles
+
+`style` chooses how the locator looks. Every Telescope layout and theme is a style, and `cutie`
+is controlk's own:
+
+| Style | Fits a locator | Notes |
+|---|---|---|
+| `default` | yes | Telescope's own default, from your `telescope.setup` (normally `horizontal`) |
+| `flex` | yes, suggested | `horizontal` on wide screens, `vertical` on narrow ones |
+| `horizontal` | yes | list on the left, preview on the right; no preview under 120 columns |
+| `vertical` | yes | preview above the list; for tall or narrow screens |
+| `ivy`, `bottom_pane` | yes, suggested | a full-width pane at the bottom of the screen |
+| `dropdown`, `center` | yes | a compact box in the middle; the preview is small on small screens |
+| `cutie` | yes | after Qt Creator's locator (see below) |
+| `cursor` | no | the theme: a 23-column list that opens wherever the cursor is |
+| `current_buffer` | no | covers the window you are working in, preview over your code |
+
+The two that do not fit work, with a warning. `layout_config` is passed to Telescope as is for
+the Telescope styles. For one call, `:Telescope controlk style=ivy`. Telescope's own `theme=` and
+`layout_strategy=` still work, and win over `style`.
+
+### Cutie
+
+`style = "cutie"` looks like Qt Creator's locator: a small prompt in the bottom-left corner, right
+above the status line, and nothing else until you type. The first character opens the list above
+the prompt and the preview to its right; clearing the prompt hides them again. The best match is
+the row right above the prompt.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                       your code, untouched                           │
+├────────────────────────────┬─────────────────────────────────────────┤
+│ class  Whatever   core     │ widget.h                                │
+│ class  Wing                │ 12  class Widget : public QObject {     │
+│ class  Widget     ui       │ 13    Q_OBJECT                          │
+├────────────────────────────┤ 14  public:                             │
+│ > c W                      │ 15    void repaint();                   │
+├────────────────────────────┴─────────────────────────────────────────┤
+│ status line and command line stay visible                            │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- `cutie.width`: columns of the prompt and the list, 40 by default. `"auto"` matches a sidebar
+  split on the left (the leftmost window at column 0, narrower than half the screen), whichever
+  plugin draws it; a floating file tree is not a split, so it gives 40.
+- `cutie.height`: rows of the list, 15 by default. A short screen gets fewer.
+- `cutie.preview`: false turns the preview off. It is also left out when it would be narrower
+  than 20 columns.
+
 ## Configuration
 
 Every option is optional. These are the defaults:
@@ -84,6 +137,12 @@ require("telescope").setup({
     controlk = {
       -- Normal-mode key for the locator. false maps nothing.
       keymap = "<C-k>",
+      -- How the locator looks: "default", a Telescope layout or theme, or "cutie".
+      style = "default",
+      -- Passed to Telescope for the Telescope styles.
+      layout_config = nil,
+      -- The cutie style. width: columns, or "auto" to match a sidebar split on the left.
+      cutie = { width = 40, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
         buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",

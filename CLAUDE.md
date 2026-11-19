@@ -14,6 +14,7 @@ The owner is Heber (GitHub: hebercosfer). The task list is in TASKS.md; read it 
   `on_input_filter_cb`, sorter pass-through, select action).
 - `lua/controlk/util.lua`: `await` (plenary oneshot), `memo`, `hint`, `terminal`, `act`, `tag_items`.
 - `lua/controlk/cmake.lua`: CMake File API model reader, configure, CTest JSON parsing.
+- `lua/controlk/cutie.lua`: geometry of the cutie style, pure Lua (`picker.lua` applies it).
 - `lua/controlk/sources/*.lua`: one module per source. `sources/init.lua` is the registry.
 - `tests/`: unit tests (plenary busted). `tests/integration/run.lua`: picker harness and fixtures.
 
@@ -22,7 +23,11 @@ The owner is Heber (GitHub: hebercosfer). The task list is in TASKS.md; read it 
 - The core is Telescope-free. Only `picker.lua` may require `telescope.*`. Keep it that way so a
   Snacks adapter stays possible.
 - A source has one contract: `items(query, ctx, done)`. Items are plain tables: `text`, `detail`,
-  `tag`, `path`, `lnum`, `col`, `bufnr`, `run`, `passthrough`, `hint`. A source must not assume a UI.
+  `tag`, `path`, `lnum`, `col`, `bufnr`, `run`, `passthrough`, `hint`, `prompt`, `pinned`. A source
+  must not assume a UI.
+- `prompt` means picking the item replaces the input with that text instead of acting (the `?`
+  list, prefix suggestions). `pinned = true` means the item ranks before every unpinned item, in
+  its own order (prefix suggestions).
 - `passthrough = true` means the source already filtered the results (LSP server, shell, web,
   eval, filesystem). Fuzzy matching must not drop them.
 - Workspace-symbol sources need at least `lsp.min_query` characters. clangd caps an empty query at
@@ -46,8 +51,8 @@ Integration harness (needs clangd, cmake with Ninja, ctest; see the header of `t
     SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
     SESSION=config (same command)
 
-Both must pass before a commit. The last recorded results: unit 51/51; LSP+CMake 29/29; config 7/7;
-0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
+Both must pass before a commit. The last recorded results: unit 79/79; LSP+CMake 51/51;
+config 15/15; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
 the deprecation check. Run single specs through the directory runner: `PlenaryBustedFile` ignores
 `tests/minimal_init.lua` and loads the owner's own config, so the deprecation hook is missing there.
 

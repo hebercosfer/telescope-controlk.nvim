@@ -61,3 +61,37 @@ describe("prefixes source", function()
     assert.is_not_nil(find(items, "o"))
   end)
 end)
+
+describe("prefixes.matching", function()
+  local map = config.resolve({}).prefix_map
+  local function tags(rows)
+    return vim.tbl_map(function(r)
+      return r.tag
+    end, rows)
+  end
+
+  it("lists the prefixes a partial prefix could become, in order", function()
+    assert.are.same({ "c", "cm", "cmo", "ct" }, tags(prefixes.matching("c", map)))
+    assert.are.same({ "cm", "cmo" }, tags(prefixes.matching("cm", map)))
+  end)
+
+  it("gives nothing for text that starts no prefix", function()
+    assert.are.same({}, prefixes.matching("cmx", map))
+    assert.are.same({}, prefixes.matching("Widget", map))
+    assert.are.same({}, prefixes.matching("", map))
+  end)
+
+  it("marks rows pinned and fills the prompt", function()
+    local row = prefixes.matching("ct", map)[1]
+    assert.is_true(row.pinned)
+    assert.are.equal("ct ", row.prompt)
+    assert.are.equal("CTest tests", row.text)
+  end)
+
+  it("follows custom and removed prefixes, and never suggests itself", function()
+    local m = config.resolve({
+      prefixes = { lsp_classes = "cl", cmake_tests = false, prefixes = "c?" },
+    }).prefix_map
+    assert.are.same({ "cl", "cm", "cmo" }, tags(prefixes.matching("c", m)))
+  end)
+end)

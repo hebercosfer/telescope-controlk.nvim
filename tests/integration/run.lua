@@ -146,6 +146,126 @@ local function start_clangd(file)
   end, 100)
 end
 
+-- ------------------------------------------------------------------ cutie style
+local function cutie_checks()
+  say("== cutie")
+  vim.cmd.cd(FIX .. "/proj")
+  local columns, lines = vim.o.columns, vim.o.lines
+  vim.o.columns, vim.o.lines = 200, 50
+  local function hidden(win)
+    return win ~= nil and vim.api.nvim_win_get_config(win).hide == true
+  end
+  local function border(b)
+    return b and b.winid
+  end
+
+  require("controlk").setup({ style = "cutie" })
+  local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  -- Nothing is visible yet, so the open and split keys must not act on a hidden row.
+  local wins = #vim.api.nvim_tabpage_list_wins(0)
+  for _, action in ipairs({ "select_default", "select_vertical", "select_horizontal" }) do
+    pcall(actions[action], prompt)
+    vim.wait(100, function()
+      return false
+    end, 20)
+  end
+  check(
+    "keys on an empty cutie prompt act on nothing",
+    vim.api.nvim_buf_is_valid(prompt)
+      and vim.api.nvim_get_current_buf() == prompt
+      and #vim.api.nvim_tabpage_list_wins(0) == wins,
+    vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
+  )
+  if not vim.api.nvim_buf_is_valid(prompt) or vim.api.nvim_get_current_buf() ~= prompt then
+    vim.cmd("silent! only")
+    picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  end
+  check(
+    "cutie hides the list and the preview while the prompt is empty",
+    hidden(picker.results_win)
+      and hidden(border(picker.results_border))
+      and hidden(picker.preview_win)
+      and hidden(border(picker.preview_border))
+  )
+  local pb = vim.api.nvim_win_get_config(border(picker.prompt_border))
+  local last = vim.o.lines - vim.o.cmdheight - 2 -- the row above the status line
+  check(
+    "cutie's prompt is bottom-left, above the status line",
+    pb.col == 0 and pb.row + pb.height - 1 == last,
+    vim.inspect({ pb.row, pb.col, pb.height, last })
+  )
+  type_text(picker, prompt, "c W")
+  check(
+    "typing shows the list and the preview",
+    not hidden(picker.results_win) and not hidden(picker.preview_win)
+  )
+  local rb = vim.api.nvim_win_get_config(border(picker.results_border))
+  check("the list is cutie.width wide", rb.width == 40, tostring(rb.width))
+  check(
+    "the best match is next to the prompt",
+    picker.sorting_strategy == "descending",
+    picker.sorting_strategy
+  )
+  type_text(picker, prompt, "")
+  check(
+    "an empty prompt hides them again",
+    hidden(picker.results_win) and hidden(picker.preview_win)
+  )
+  -- Too narrow for a preview, then wide again: Telescope drops the preview window and creates
+  -- a new one, which must not appear while the prompt is empty.
+  for _, width in ipairs({ 55, 200 }) do
+    vim.o.columns = width
+    vim.cmd("doautocmd VimResized")
+    vim.wait(300, function()
+      return false
+    end, 20)
+  end
+  check(
+    "a resize keeps them hidden, a new preview included",
+    hidden(picker.results_win) and (picker.preview_win == nil or hidden(picker.preview_win)),
+    vim.inspect({ preview = picker.preview_win })
+  )
+  close(prompt)
+
+  -- :Telescope resume builds a new picker from the cached one; it must hide the same way.
+  picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  type_text(picker, prompt, "c")
+  close(prompt)
+  require("telescope.builtin").resume()
+  vim.wait(300, function()
+    return false
+  end, 20)
+  prompt = vim.api.nvim_get_current_buf()
+  picker = state.get_current_picker(prompt)
+  if picker then
+    type_text(picker, prompt, "")
+    check(
+      "after resume, an empty prompt still hides the list",
+      hidden(picker.results_win) and hidden(picker.preview_win)
+    )
+    local resumed = type_text(picker, prompt, "o ")
+    check("after resume, a prefix still switches the source", only_tag(resumed, "buffer"))
+    close(prompt)
+  else
+    check("after resume, an empty prompt still hides the list", false, "resume opened nothing")
+  end
+
+  require("controlk").setup({ style = "default" })
+  vim.cmd.edit(FIX .. "/proj/src/widget.h")
+  require("controlk").open({ style = "cutie" })
+  vim.wait(150, function()
+    return false
+  end, 20)
+  prompt = vim.api.nvim_get_current_buf()
+  picker = state.get_current_picker(prompt)
+  check("style=cutie for one call opens cutie", picker ~= nil and hidden(picker.results_win))
+  if picker then
+    close(prompt)
+  end
+  require("controlk").setup({})
+  vim.o.columns, vim.o.lines = columns, lines
+end
+
 -- ------------------------------------------------------------------ LSP + CMake
 local function lsp_and_cmake()
   vim.cmd("runtime plugin/telescope.lua")
@@ -220,7 +340,47 @@ local function lsp_and_cmake()
   )
   rows = rows_of(picker)
   check("the picker then shows that source", #rows == 1 and rows[1].value.hint == true)
-  close(prompt)
+
+  rows = type_text(picker, prompt, "?")
+  check("? alone lists the prefixes", has_tag(rows, "c") and has_display(rows, "Workspace classes"))
+
+  rows = type_text(picker, prompt, "c")
+  local first = {}
+  for i = 1, math.min(4, #rows) do
+    first[i] = rows[i].value.tag
+  end
+  check(
+    "c suggests c, cm, cmo, ct first",
+    vim.deep_equal(first, { "c", "cm", "cmo", "ct" }),
+    table.concat(first, ",")
+  )
+  check("c still searches the default sources", has_tag(rows, "file") or has_tag(rows, "buffer"))
+
+  rows = type_text(picker, prompt, "cmx")
+  check("cmx suggests nothing", not has_tag(rows, "cm") and not has_tag(rows, "cmo"))
+
+  -- Enter on the cm suggestion, through Telescope's real select action.
+  rows = type_text(picker, prompt, "c")
+  for _ = 1, #rows do
+    local entry = state.get_selected_entry()
+    if entry and entry.value.tag == "cm" then
+      break
+    end
+    actions.move_selection_next(prompt)
+  end
+  actions.select_default(prompt)
+  settle(picker)
+  -- Without a suggestion row, Enter acts on a file and closes the picker.
+  local open_now = vim.api.nvim_buf_is_valid(prompt)
+  input = open_now and vim.api.nvim_buf_get_lines(prompt, 0, 1, false)[1] or "<picker closed>"
+  check(
+    "enter on a suggestion puts it in the prompt",
+    input == picker.prompt_prefix .. "cm ",
+    vim.inspect(input)
+  )
+  if open_now then
+    close(prompt)
+  end
 
   -- Rows without a file (prefixes, Ex commands, web) on a screen wide enough for the preview.
   -- Below 120 columns Telescope drops the preview window, so the rest of this harness never
@@ -236,9 +396,12 @@ local function lsp_and_cmake()
     return real_notify(msg, level, ...)
   end
   vim.v.errmsg = ""
+  -- A listed buffer with no name: a buffers row with a bufnr but no path.
+  vim.cmd("enew")
+  local unnamed = vim.api.nvim_get_current_buf()
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   check("a wide screen shows the preview", picker.previewer ~= nil and picker.preview_win ~= nil)
-  for _, text in ipairs({ "? ", "t Telescope", "r widget" }) do
+  for _, text in ipairs({ "? ", "t Telescope", "r widget", "o " }) do
     type_text(picker, prompt, text)
     for _ = 1, 3 do
       local ok, err = pcall(actions.move_selection_next, prompt)
@@ -256,6 +419,7 @@ local function lsp_and_cmake()
     vim.v.errmsg ~= "" and vim.v.errmsg or errors[1]
   )
   close(prompt)
+  pcall(vim.api.nvim_buf_delete, unnamed, { force = true })
   vim.notify = real_notify
   vim.o.columns = columns
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
@@ -386,6 +550,7 @@ local function lsp_and_cmake()
     shell_row.run(shell_row)
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
+  cutie_checks()
 end
 
 -- ----------------------------------------------------------- config customization
@@ -439,6 +604,47 @@ local function config_session()
   check(
     "duplicate prefix is reported",
     #notices >= 1 and notices[1]:find("prefix 'C'", 1, true) ~= nil,
+    notices[1]
+  )
+
+  say("== styles")
+  -- Opens the locator with picker options, and returns the picker's layout strategy.
+  local function layout_of(opts)
+    if vim.api.nvim_buf_get_name(0) ~= FIX .. "/proj/src/widget.h" then
+      vim.cmd.edit(FIX .. "/proj/src/widget.h")
+    end
+    require("controlk").open(opts or {})
+    local buf = vim.api.nvim_get_current_buf()
+    local p = state.get_current_picker(buf)
+    local strategy = p and p.layout_strategy
+    if p then
+      close(buf)
+    end
+    return strategy
+  end
+  for _, case in ipairs({
+    { "ivy", "bottom_pane" },
+    { "vertical", "vertical" },
+    { "dropdown", "center" },
+    { "flex", "flex" },
+  }) do
+    require("controlk").setup({ style = case[1] })
+    local got = layout_of()
+    check(("style %s uses the %s layout"):format(case[1], case[2]), got == case[2], tostring(got))
+  end
+  require("controlk").setup({ style = "default" })
+  local default_layout = require("telescope.config").values.layout_strategy
+  check("default keeps Telescope's own layout", layout_of() == default_layout, layout_of())
+  check("a per-call style wins over the config", layout_of({ style = "ivy" }) == "bottom_pane")
+  check(
+    "Telescope's own layout_strategy wins over style",
+    layout_of({ style = "ivy", layout_strategy = "vertical" }) == "vertical"
+  )
+  notices = {}
+  require("controlk").setup({ style = "current_buffer" })
+  check(
+    "a style that does not suit a locator warns",
+    #notices >= 1 and notices[1]:find("does not suit a locator", 1, true) ~= nil,
     notices[1]
   )
   require("controlk").setup({})

@@ -85,3 +85,77 @@ describe("config.resolve keymap", function()
     assert.is_truthy(errors[1]:find("keymap", 1, true))
   end)
 end)
+
+describe("config.resolve styles", function()
+  it("defaults to the default style and cutie's sizes", function()
+    local cfg, errors = config.resolve(nil)
+    assert.are.same({}, errors)
+    assert.are.equal("default", cfg.style)
+    assert.are.same({ width = 40, height = 15, preview = true }, cfg.cutie)
+  end)
+
+  it("accepts every Telescope layout and theme, and cutie", function()
+    for _, name in ipairs({
+      "horizontal",
+      "vertical",
+      "flex",
+      "center",
+      "bottom_pane",
+      "ivy",
+      "dropdown",
+      "cutie",
+    }) do
+      local cfg, errors = config.resolve({ style = name })
+      assert.are.same({}, errors, name)
+      assert.are.equal(name, cfg.style)
+    end
+  end)
+
+  it("warns about styles that do not suit a locator, and keeps them", function()
+    for _, name in ipairs({ "cursor", "current_buffer" }) do
+      local cfg, errors = config.resolve({ style = name })
+      assert.are.equal(name, cfg.style)
+      assert.are.equal(1, #errors)
+      assert.matches("does not suit a locator", errors[1])
+    end
+  end)
+
+  it("falls back to default on an unknown style", function()
+    local cfg, errors = config.resolve({ style = "fancy" })
+    assert.are.equal("default", cfg.style)
+    assert.are.same({ "unknown style 'fancy'; using 'default'" }, errors)
+  end)
+
+  it("accepts auto and positive integers for cutie.width, and falls back otherwise", function()
+    assert.are.equal("auto", config.resolve({ cutie = { width = "auto" } }).cutie.width)
+    assert.are.equal(32, config.resolve({ cutie = { width = 32 } }).cutie.width)
+    for _, bad in ipairs({ 0, -3, 2.5, "wide" }) do
+      local cfg, errors = config.resolve({ cutie = { width = bad } })
+      assert.are.equal(40, cfg.cutie.width)
+      assert.matches("invalid cutie.width", errors[1])
+    end
+    local cfg, errors = config.resolve({ cutie = { height = 0 } })
+    assert.are.equal(15, cfg.cutie.height)
+    assert.matches("invalid cutie.height", errors[1])
+  end)
+end)
+
+describe("config.resolve option shapes", function()
+  it("warns instead of failing when cutie is not a table", function()
+    local cfg, errors = config.resolve({ cutie = false })
+    assert.are.same({ width = 40, height = 15, preview = true }, cfg.cutie)
+    assert.matches("invalid cutie", errors[1])
+  end)
+
+  it("warns about a layout_config that is not a table, and drops it", function()
+    local cfg, errors = config.resolve({ layout_config = 5 })
+    assert.is_nil(cfg.layout_config)
+    assert.matches("invalid layout_config", errors[1])
+  end)
+
+  it("warns about a cutie.preview that is not a boolean", function()
+    local cfg, errors = config.resolve({ cutie = { preview = "yes" } })
+    assert.is_true(cfg.cutie.preview)
+    assert.matches("invalid cutie.preview", errors[1])
+  end)
+end)
