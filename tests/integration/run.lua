@@ -55,7 +55,10 @@ local function settle(picker)
       stable = 0
     end
     last = n
-    return stable >= 12
+    -- Zero rows can just mean the async sources have not answered yet (CTest on a slow
+    -- runner), so only rows count as settled. A query that really has no rows waits
+    -- out the 8 seconds above.
+    return stable >= 12 and n > 0
   end, 25)
 end
 
@@ -412,4 +415,4 @@ else
 end
 
 say(("RESULT %s: %d passed, %d failed"):format(SESSION, passed, failed))
-vim.cmd("qa!")
+vim.cmd(failed == 0 and "qa!" or "cquit 1")
