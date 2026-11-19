@@ -33,8 +33,10 @@ local function make_entry(item)
     filename = item.path,
     -- Telescope previews entry.path, then entry.filename, then entry.value. A row with no file
     -- (prefixes, commands, web...) would hand it the item table, which fails in path_expand.
-    -- An empty path is what its previewers treat as "nothing to preview".
-    path = item.path or (item.bufnr == nil and "" or nil),
+    -- An empty path is what its previewers treat as "nothing to preview". A buffer without a
+    -- name gets "[No Name]", as Telescope's own buffer picker does: its previewer then shows
+    -- the buffer's lines (master) or nothing (v0.1.9), never an error.
+    path = item.path or (item.bufnr ~= nil and "[No Name]" or ""),
     lnum = item.lnum,
     col = item.col,
   }

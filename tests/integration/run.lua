@@ -396,9 +396,12 @@ local function lsp_and_cmake()
     return real_notify(msg, level, ...)
   end
   vim.v.errmsg = ""
+  -- A listed buffer with no name: a buffers row with a bufnr but no path.
+  vim.cmd("enew")
+  local unnamed = vim.api.nvim_get_current_buf()
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   check("a wide screen shows the preview", picker.previewer ~= nil and picker.preview_win ~= nil)
-  for _, text in ipairs({ "? ", "t Telescope", "r widget" }) do
+  for _, text in ipairs({ "? ", "t Telescope", "r widget", "o " }) do
     type_text(picker, prompt, text)
     for _ = 1, 3 do
       local ok, err = pcall(actions.move_selection_next, prompt)
@@ -416,6 +419,7 @@ local function lsp_and_cmake()
     vim.v.errmsg ~= "" and vim.v.errmsg or errors[1]
   )
   close(prompt)
+  pcall(vim.api.nvim_buf_delete, unnamed, { force = true })
   vim.notify = real_notify
   vim.o.columns = columns
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
