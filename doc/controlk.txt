@@ -96,8 +96,13 @@ Symbol sources need at least one character. Language servers cap an empty query
 (clangd returns 100 results, mostly from the standard library), so the picker asks
 you to type instead. The minimum is set by `lsp.min_query`.
 
-Prefix list: `?` lists every configured prefix. Enter replaces `? ` with the
-chosen prefix and switches to that source; the picker stays open.
+Prefix list: `?` lists every configured prefix, at once, without a space. Enter
+replaces it with the chosen prefix and switches to that source; the picker stays
+open.
+
+Prefix suggestions: a partly typed prefix lists the prefixes it could become
+before the usual results. `c` lists `c`, `cm`, `cmo` and `ct`, then the buffers,
+files and lines that match `c`. Enter on a suggestion works as in the `?` list.
 
 Files: `a` lists project files with rg or git. It skips hidden paths.
 

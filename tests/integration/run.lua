@@ -220,7 +220,47 @@ local function lsp_and_cmake()
   )
   rows = rows_of(picker)
   check("the picker then shows that source", #rows == 1 and rows[1].value.hint == true)
-  close(prompt)
+
+  rows = type_text(picker, prompt, "?")
+  check("? alone lists the prefixes", has_tag(rows, "c") and has_display(rows, "Workspace classes"))
+
+  rows = type_text(picker, prompt, "c")
+  local first = {}
+  for i = 1, math.min(4, #rows) do
+    first[i] = rows[i].value.tag
+  end
+  check(
+    "c suggests c, cm, cmo, ct first",
+    vim.deep_equal(first, { "c", "cm", "cmo", "ct" }),
+    table.concat(first, ",")
+  )
+  check("c still searches the default sources", has_tag(rows, "file") or has_tag(rows, "buffer"))
+
+  rows = type_text(picker, prompt, "cmx")
+  check("cmx suggests nothing", not has_tag(rows, "cm") and not has_tag(rows, "cmo"))
+
+  -- Enter on the cm suggestion, through Telescope's real select action.
+  rows = type_text(picker, prompt, "c")
+  for _ = 1, #rows do
+    local entry = state.get_selected_entry()
+    if entry and entry.value.tag == "cm" then
+      break
+    end
+    actions.move_selection_next(prompt)
+  end
+  actions.select_default(prompt)
+  settle(picker)
+  -- Without a suggestion row, Enter acts on a file and closes the picker.
+  local open_now = vim.api.nvim_buf_is_valid(prompt)
+  input = open_now and vim.api.nvim_buf_get_lines(prompt, 0, 1, false)[1] or "<picker closed>"
+  check(
+    "enter on a suggestion puts it in the prompt",
+    input == picker.prompt_prefix .. "cm ",
+    vim.inspect(input)
+  )
+  if open_now then
+    close(prompt)
+  end
 
   -- Rows without a file (prefixes, Ex commands, web) on a screen wide enough for the preview.
   -- Below 120 columns Telescope drops the preview window, so the rest of this harness never

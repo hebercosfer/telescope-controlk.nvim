@@ -60,9 +60,13 @@ vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locat
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
 
-Type `? ` when you do not remember a prefix. Enter on an entry replaces `? ` with that prefix
-and switches to its source, so `? ` then Enter on `c` leaves `c ` in the prompt, ready for a class
-name.
+Type `?` when you do not remember a prefix: the list shows at once, without a space. Enter on an
+entry replaces `?` with that prefix and switches to its source, so `?` then Enter on `c` leaves
+`c ` in the prompt, ready for a class name.
+
+A partly typed prefix suggests the prefixes it could become. `c` lists `c`, `cm`, `cmo` and `ct`
+first, then the buffers, files and lines that match `c`, so nothing is lost while you decide.
+Enter on a suggestion works like Enter in the `?` list.
 
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
 searches the project. The longest matching prefix wins, so `cm` never triggers `c`.

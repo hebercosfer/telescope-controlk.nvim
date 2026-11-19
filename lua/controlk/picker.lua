@@ -9,6 +9,7 @@ local sorters = require("telescope.sorters")
 
 local cmake = require("controlk.cmake")
 local parse = require("controlk.parse")
+local prefixes = require("controlk.sources.prefixes")
 local registry = require("controlk.sources")
 local util = require("controlk.util")
 
@@ -62,6 +63,11 @@ local function make_sorter(opts)
     end,
     scoring_function = function(_, prompt, line, entry)
       local item = entry.value
+      -- Telescope ranks lower scores first. Pinned rows (prefix suggestions) score below any
+      -- fuzzy match, in their own order.
+      if item and item.pinned then
+        return (entry.index or 1) * 1e-6
+      end
       if item and item.passthrough then
         return entry.index or 1
       end
@@ -71,7 +77,8 @@ local function make_sorter(opts)
 end
 
 local function run_default(query, ctx, done)
-  local collected = {}
+  -- A partly typed prefix ("c") lists the prefixes it could become before the usual results.
+  local collected = prefixes.matching(query, ctx.config.prefix_map)
   local function step(index)
     local id = ctx.config.default_sources[index]
     if not id then
