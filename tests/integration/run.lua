@@ -146,6 +146,84 @@ local function start_clangd(file)
   end, 100)
 end
 
+-- ------------------------------------------------------------------ cutie style
+local function cutie_checks()
+  say("== cutie")
+  vim.cmd.cd(FIX .. "/proj")
+  local columns, lines = vim.o.columns, vim.o.lines
+  vim.o.columns, vim.o.lines = 200, 50
+  local function hidden(win)
+    return win ~= nil and vim.api.nvim_win_get_config(win).hide == true
+  end
+  local function border(b)
+    return b and b.winid
+  end
+
+  require("controlk").setup({ style = "cutie" })
+  local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  check(
+    "cutie hides the list and the preview while the prompt is empty",
+    hidden(picker.results_win)
+      and hidden(border(picker.results_border))
+      and hidden(picker.preview_win)
+      and hidden(border(picker.preview_border))
+  )
+  local pb = vim.api.nvim_win_get_config(border(picker.prompt_border))
+  local last = vim.o.lines - vim.o.cmdheight - 2 -- the row above the status line
+  check(
+    "cutie's prompt is bottom-left, above the status line",
+    pb.col == 0 and pb.row + pb.height - 1 == last,
+    vim.inspect({ pb.row, pb.col, pb.height, last })
+  )
+  type_text(picker, prompt, "c W")
+  check(
+    "typing shows the list and the preview",
+    not hidden(picker.results_win) and not hidden(picker.preview_win)
+  )
+  local rb = vim.api.nvim_win_get_config(border(picker.results_border))
+  check("the list is cutie.width wide", rb.width == 40, tostring(rb.width))
+  check(
+    "the best match is next to the prompt",
+    picker.sorting_strategy == "descending",
+    picker.sorting_strategy
+  )
+  type_text(picker, prompt, "")
+  check(
+    "an empty prompt hides them again",
+    hidden(picker.results_win) and hidden(picker.preview_win)
+  )
+  -- Too narrow for a preview, then wide again: Telescope drops the preview window and creates
+  -- a new one, which must not appear while the prompt is empty.
+  for _, width in ipairs({ 55, 200 }) do
+    vim.o.columns = width
+    vim.cmd("doautocmd VimResized")
+    vim.wait(300, function()
+      return false
+    end, 20)
+  end
+  check(
+    "a resize keeps them hidden, a new preview included",
+    hidden(picker.results_win) and (picker.preview_win == nil or hidden(picker.preview_win)),
+    vim.inspect({ preview = picker.preview_win })
+  )
+  close(prompt)
+
+  require("controlk").setup({ style = "default" })
+  vim.cmd.edit(FIX .. "/proj/src/widget.h")
+  require("controlk").open({ style = "cutie" })
+  vim.wait(150, function()
+    return false
+  end, 20)
+  prompt = vim.api.nvim_get_current_buf()
+  picker = state.get_current_picker(prompt)
+  check("style=cutie for one call opens cutie", picker ~= nil and hidden(picker.results_win))
+  if picker then
+    close(prompt)
+  end
+  require("controlk").setup({})
+  vim.o.columns, vim.o.lines = columns, lines
+end
+
 -- ------------------------------------------------------------------ LSP + CMake
 local function lsp_and_cmake()
   vim.cmd("runtime plugin/telescope.lua")
@@ -426,6 +504,7 @@ local function lsp_and_cmake()
     shell_row.run(shell_row)
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
+  cutie_checks()
 end
 
 -- ----------------------------------------------------------- config customization

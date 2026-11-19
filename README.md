@@ -99,6 +99,34 @@ The two that do not fit work, with a warning. `layout_config` is passed to Teles
 the Telescope styles. For one call, `:Telescope controlk style=ivy`. Telescope's own `theme=` and
 `layout_strategy=` still work, and win over `style`.
 
+### Cutie
+
+`style = "cutie"` looks like Qt Creator's locator: a small prompt in the bottom-left corner, right
+above the status line, and nothing else until you type. The first character opens the list above
+the prompt and the preview to its right; clearing the prompt hides them again. The best match is
+the row right above the prompt.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                       your code, untouched                           │
+├────────────────────────────┬─────────────────────────────────────────┤
+│ class  Whatever   core     │ widget.h                                │
+│ class  Wing                │ 12  class Widget : public QObject {     │
+│ class  Widget     ui       │ 13    Q_OBJECT                          │
+├────────────────────────────┤ 14  public:                             │
+│ > c W                      │ 15    void repaint();                   │
+├────────────────────────────┴─────────────────────────────────────────┤
+│ status line and command line stay visible                            │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- `cutie.width`: columns of the prompt and the list, 40 by default. `"auto"` matches a sidebar
+  split on the left (the leftmost window at column 0, narrower than half the screen), whichever
+  plugin draws it; a floating file tree is not a split, so it gives 40.
+- `cutie.height`: rows of the list, 15 by default. A short screen gets fewer.
+- `cutie.preview`: false turns the preview off. It is also left out when it would be narrower
+  than 20 columns.
+
 ## Configuration
 
 Every option is optional. These are the defaults:

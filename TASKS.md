@@ -82,4 +82,7 @@ Ordered by value. Each item lists its acceptance check.
 - `f` lists directories and opens them with netrw. It does not create files, which Qt Creator does.
 - `files` uses `rg --files`, which skips hidden paths. There is no option to include them.
 - The picker title is fixed to "Locator".
+- Telescope bug, not ours: when a resize makes the screen too narrow for the preview, Telescope
+  raises `pickers.lua:204: attempt to index field 'preview' (a nil value)`. It happens with every
+  style, `default` included. Not patched here (upstream rule); worth reporting to telescope.nvim.
 - The harness has run only on Linux. macOS and Windows belong to the release gate.
