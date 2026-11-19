@@ -1,0 +1,4 @@
+# Deprecations made by Neovim, Telescope or plenary that controlk cannot remove.
+# One per line: the deprecated name, the version that deprecates it, and the reason.
+# tests/check_deprecations.lua fails on any reported name that is not listed here.
+# Calls from controlk's own code are never allowed.
