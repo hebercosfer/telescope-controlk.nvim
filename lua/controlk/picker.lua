@@ -28,6 +28,10 @@ local function make_entry(item)
     display = display,
     ordinal = item.ordinal or (text .. " " .. (item.detail or "")),
     filename = item.path,
+    -- Telescope previews entry.path, then entry.filename, then entry.value. A row with no file
+    -- (prefixes, commands, web...) would hand it the item table, which fails in path_expand.
+    -- An empty path is what its previewers treat as "nothing to preview".
+    path = item.path or (item.bufnr == nil and "" or nil),
     lnum = item.lnum,
     col = item.col,
   }
