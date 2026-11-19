@@ -67,6 +67,14 @@ Ordered by value. Each item lists its acceptance check.
   after it. Still to build, from the version-matrix design: the README's Neovim floor (0.10.4),
   the weekly `compat.yml` job, and the release workflow.
 
+- **T14. Prefix icons (wish, owner's request 2026-11-19).** When a prefix and a space are typed,
+  show a Nerd Font icon for that source, for example a CMake icon for `cm`, `cmo` and `ct`, a class
+  symbol for `c`, and a globe or "www" for `r`. Choose an icon for every other prefix too, and check
+  each one renders in the owner's font. The icon belongs to the source, as a field next to `tag`,
+  so `picker.lua` and a future Snacks adapter can both draw it, and a user without a Nerd Font
+  can turn it off. Acceptance: each default prefix has an icon, the `?` list shows them, and
+  turning icons off leaves today's text-only rows.
+
 ## Known limitations (no task yet)
 
 - clangd returns a class and its constructor as two symbols under `:`. The picker shows both.
