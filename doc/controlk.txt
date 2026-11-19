@@ -8,8 +8,9 @@ CONTENTS                                                    *controlk-contents*
   3. Setup .................................... |controlk-setup|
   4. Sources and prefixes ..................... |controlk-sources|
   5. CMake .................................... |controlk-cmake|
-  6. Configuration ............................ |controlk-config|
-  7. Commands and Lua API ..................... |controlk-commands|
+  6. Styles ................................... |controlk-styles|
+  7. Configuration ............................ |controlk-config|
+  8. Commands and Lua API ..................... |controlk-commands|
 
 ==============================================================================
 1. INTRODUCTION                                                *controlk-intro*
@@ -125,7 +126,30 @@ Set `cmake.build_dir` to choose the directory explicitly. It can be a relative
 name such as "build", or an absolute path.
 
 ==============================================================================
-6. CONFIGURATION                                                *controlk-config*
+6. STYLES                                                        *controlk-styles*
+
+`style` chooses how the locator looks. Every Telescope layout and theme is a
+style, and `cutie` is controlk's own.
+
+  Style            Fits     Notes
+  ---------------  -------  ------------------------------------------------
+  default          yes      Telescope's own default, from telescope.setup
+  flex             yes      horizontal when wide, vertical when narrow
+  horizontal       yes      preview on the right, none under 120 columns
+  vertical         yes      preview above the list
+  ivy, bottom_pane yes      a full-width pane at the bottom
+  dropdown, center yes      a compact box in the middle
+  cutie            yes      after Qt Creator's locator, see |controlk-cutie|
+  cursor           no       the theme: a 23-column list at the cursor
+  current_buffer   no       covers the window you work in
+
+The two that do not fit work, with a warning. `layout_config` is passed to
+Telescope as is for the Telescope styles. For one call:
+`:Telescope controlk style=ivy`. Telescope's own `theme=` and
+`layout_strategy=` still work, and win over `style`.
+
+==============================================================================
+7. CONFIGURATION                                                *controlk-config*
 
 Every option is optional. These are the defaults, set through `telescope.setup`:
 >lua
@@ -134,6 +158,12 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
         controlk = {
           -- Normal-mode key for the locator. false maps nothing.
           keymap = "<C-k>",
+          -- "default", a Telescope layout or theme, or "cutie".
+          style = "default",
+          -- Passed to Telescope for the Telescope styles.
+          layout_config = nil,
+          -- The cutie style. width: columns, or "auto".
+          cutie = { width = 40, height = 15, preview = true },
           -- Prefix per source. false removes the prefix.
           prefixes = {
             buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
@@ -180,7 +210,7 @@ Configuration problems (duplicate or invalid prefixes, unknown source ids) are
 reported as warnings when the extension is set up.
 
 ==============================================================================
-7. COMMANDS AND LUA API                                        *controlk-commands*
+8. COMMANDS AND LUA API                                        *controlk-commands*
 
 `:Telescope controlk`
     Open the locator. Same as calling the Lua function below.

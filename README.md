@@ -78,6 +78,27 @@ CMake sources use CMake's File API, so they work with Makefiles, Ninja and other
 build directory is the first one under the project that contains a `CMakeCache.txt`. If none
 exists, the picker offers a "Configure project" item.
 
+## Styles
+
+`style` chooses how the locator looks. Every Telescope layout and theme is a style, and `cutie`
+is controlk's own:
+
+| Style | Fits a locator | Notes |
+|---|---|---|
+| `default` | yes | Telescope's own default, from your `telescope.setup` (normally `horizontal`) |
+| `flex` | yes, suggested | `horizontal` on wide screens, `vertical` on narrow ones |
+| `horizontal` | yes | list on the left, preview on the right; no preview under 120 columns |
+| `vertical` | yes | preview above the list; for tall or narrow screens |
+| `ivy`, `bottom_pane` | yes, suggested | a full-width pane at the bottom of the screen |
+| `dropdown`, `center` | yes | a compact box in the middle; the preview is small on small screens |
+| `cutie` | yes | after Qt Creator's locator (see below) |
+| `cursor` | no | the theme: a 23-column list that opens wherever the cursor is |
+| `current_buffer` | no | covers the window you are working in, preview over your code |
+
+The two that do not fit work, with a warning. `layout_config` is passed to Telescope as is for
+the Telescope styles. For one call, `:Telescope controlk style=ivy`. Telescope's own `theme=` and
+`layout_strategy=` still work, and win over `style`.
+
 ## Configuration
 
 Every option is optional. These are the defaults:
@@ -88,6 +109,12 @@ require("telescope").setup({
     controlk = {
       -- Normal-mode key for the locator. false maps nothing.
       keymap = "<C-k>",
+      -- How the locator looks: "default", a Telescope layout or theme, or "cutie".
+      style = "default",
+      -- Passed to Telescope for the Telescope styles.
+      layout_config = nil,
+      -- The cutie style. width: columns, or "auto" to match a sidebar split on the left.
+      cutie = { width = 40, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
         buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",

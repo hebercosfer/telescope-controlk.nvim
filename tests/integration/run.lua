@@ -481,6 +481,47 @@ local function config_session()
     #notices >= 1 and notices[1]:find("prefix 'C'", 1, true) ~= nil,
     notices[1]
   )
+
+  say("== styles")
+  -- Opens the locator with picker options, and returns the picker's layout strategy.
+  local function layout_of(opts)
+    if vim.api.nvim_buf_get_name(0) ~= FIX .. "/proj/src/widget.h" then
+      vim.cmd.edit(FIX .. "/proj/src/widget.h")
+    end
+    require("controlk").open(opts or {})
+    local buf = vim.api.nvim_get_current_buf()
+    local p = state.get_current_picker(buf)
+    local strategy = p and p.layout_strategy
+    if p then
+      close(buf)
+    end
+    return strategy
+  end
+  for _, case in ipairs({
+    { "ivy", "bottom_pane" },
+    { "vertical", "vertical" },
+    { "dropdown", "center" },
+    { "flex", "flex" },
+  }) do
+    require("controlk").setup({ style = case[1] })
+    local got = layout_of()
+    check(("style %s uses the %s layout"):format(case[1], case[2]), got == case[2], tostring(got))
+  end
+  require("controlk").setup({ style = "default" })
+  local default_layout = require("telescope.config").values.layout_strategy
+  check("default keeps Telescope's own layout", layout_of() == default_layout, layout_of())
+  check("a per-call style wins over the config", layout_of({ style = "ivy" }) == "bottom_pane")
+  check(
+    "Telescope's own layout_strategy wins over style",
+    layout_of({ style = "ivy", layout_strategy = "vertical" }) == "vertical"
+  )
+  notices = {}
+  require("controlk").setup({ style = "current_buffer" })
+  check(
+    "a style that does not suit a locator warns",
+    #notices >= 1 and notices[1]:find("does not suit a locator", 1, true) ~= nil,
+    notices[1]
+  )
   require("controlk").setup({})
 end
 

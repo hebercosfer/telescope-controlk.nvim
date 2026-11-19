@@ -8,6 +8,7 @@ local pickers = require("telescope.pickers")
 local sorters = require("telescope.sorters")
 
 local cmake = require("controlk.cmake")
+local config = require("controlk.config")
 local parse = require("controlk.parse")
 local prefixes = require("controlk.sources.prefixes")
 local registry = require("controlk.sources")
@@ -118,9 +119,37 @@ local function finder_for(id, ctx)
   })
 end
 
+-- Applies the style to the picker options. Telescope's own layout_strategy (or a theme= on the
+-- command line, which sets one) wins: it is what Telescope users already type.
+---@return table opts
+---@return string style
+local function apply_style(opts, cfg)
+  local style, message = config.check_style(opts.style or cfg.style)
+  if opts.style and message then
+    -- The config's own warnings were shown by setup; only a per-call style is new here.
+    vim.notify("controlk: " .. message, vim.log.levels.WARN)
+  end
+  opts.style = nil
+  if opts.layout_strategy then
+    return opts, style
+  end
+  if cfg.layout_config then
+    opts.layout_config =
+      vim.tbl_deep_extend("force", vim.deepcopy(cfg.layout_config), opts.layout_config or {})
+  end
+  local kind = config.STYLES[style]
+  if kind == "layout" then
+    opts.layout_strategy = style
+  elseif kind == "theme" then
+    opts = require("telescope.themes")["get_" .. style](opts)
+  end
+  return opts, style
+end
+
 ---@param opts table telescope picker options
 ---@param cfg table resolved controlk configuration
 function M.open(opts, cfg)
+  opts = apply_style(opts, cfg)
   local origin_buf = vim.api.nvim_get_current_buf()
   local ctx = {
     config = cfg,
