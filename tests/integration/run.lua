@@ -220,6 +220,45 @@ local function lsp_and_cmake()
   )
   rows = rows_of(picker)
   check("the picker then shows that source", #rows == 1 and rows[1].value.hint == true)
+  close(prompt)
+
+  -- Rows without a file (prefixes, Ex commands, web) on a screen wide enough for the preview.
+  -- Below 120 columns Telescope drops the preview window, so the rest of this harness never
+  -- runs the previewer. With no path Telescope used to preview the item table itself.
+  local columns = vim.o.columns
+  vim.o.columns = 200
+  local errors = {}
+  local real_notify = vim.notify
+  vim.notify = function(msg, level, ...)
+    if level == vim.log.levels.ERROR then
+      table.insert(errors, msg)
+    end
+    return real_notify(msg, level, ...)
+  end
+  vim.v.errmsg = ""
+  picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
+  check("a wide screen shows the preview", picker.previewer ~= nil and picker.preview_win ~= nil)
+  for _, text in ipairs({ "? ", "t Telescope", "r widget" }) do
+    type_text(picker, prompt, text)
+    for _ = 1, 3 do
+      local ok, err = pcall(actions.move_selection_next, prompt)
+      if not ok then
+        table.insert(errors, err)
+      end
+      vim.wait(100, function()
+        return false
+      end, 20)
+    end
+  end
+  check(
+    "previewing rows without a file raises no error",
+    vim.v.errmsg == "" and #errors == 0,
+    vim.v.errmsg ~= "" and vim.v.errmsg or errors[1]
+  )
+  close(prompt)
+  vim.notify = real_notify
+  vim.o.columns = columns
+  picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
 
   rows = type_text(picker, prompt, "f src/")
   check("f browses directories", has_display(rows, "widget.h"))
