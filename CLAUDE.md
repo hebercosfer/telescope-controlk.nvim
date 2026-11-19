@@ -22,7 +22,11 @@ The owner is Heber (GitHub: hebercosfer). The task list is in TASKS.md; read it 
 - The core is Telescope-free. Only `picker.lua` may require `telescope.*`. Keep it that way so a
   Snacks adapter stays possible.
 - A source has one contract: `items(query, ctx, done)`. Items are plain tables: `text`, `detail`,
-  `tag`, `path`, `lnum`, `col`, `bufnr`, `run`, `passthrough`, `hint`. A source must not assume a UI.
+  `tag`, `path`, `lnum`, `col`, `bufnr`, `run`, `passthrough`, `hint`, `prompt`, `pinned`. A source
+  must not assume a UI.
+- `prompt` means picking the item replaces the input with that text instead of acting (the `?`
+  list, prefix suggestions). `pinned = true` means the item ranks before every unpinned item, in
+  its own order (prefix suggestions).
 - `passthrough = true` means the source already filtered the results (LSP server, shell, web,
   eval, filesystem). Fuzzy matching must not drop them.
 - Workspace-symbol sources need at least `lsp.min_query` characters. clangd caps an empty query at

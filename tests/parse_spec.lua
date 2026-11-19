@@ -55,6 +55,22 @@ describe("parse", function()
     assert.are.equal("vector", query)
   end)
 
+  it("reads ? alone as the prefix list", function()
+    local m = { ["?"] = "prefixes", c = "lsp_classes" }
+    assert.are.same({ "prefixes", "", "?" }, { parse.parse("?", m) })
+    assert.are.same({ "prefixes", "W", "?" }, { parse.parse("? W", m) })
+  end)
+
+  it("does not read ? alone as the list when ? belongs to another source", function()
+    assert.are.same({ nil, "?", nil }, { parse.parse("?", map) })
+  end)
+
+  it("follows a renamed prefix list", function()
+    local m = { ["??"] = "prefixes" }
+    assert.are.same({ nil, "?", nil }, { parse.parse("?", m) })
+    assert.are.same({ "prefixes", "", "??" }, { parse.parse("??", m) })
+  end)
+
   it("handles an empty prompt", function()
     local id, query = parse.parse("", map)
     assert.is_nil(id)

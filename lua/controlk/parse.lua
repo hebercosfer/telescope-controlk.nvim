@@ -18,6 +18,10 @@ function M.parse(prompt, prefix_map)
   if best then
     return prefix_map[best], prompt:sub(#best + 2), best
   end
+  -- The prefix list needs no space: "?" alone shows it at once.
+  if prompt ~= "" and prefix_map[prompt] == "prefixes" then
+    return "prefixes", "", prompt
+  end
   return nil, prompt, nil
 end
 
