@@ -12,6 +12,12 @@
 -- Fixtures are copied to a temporary directory for every run. They must not sit inside this
 -- repository: its .git would become the project root of the samples. Set FIXTURES to
 -- reuse a directory.
+-- DEPRECATION_REPORT=<file> records deprecated calls made by Neovim or the plugins, for
+-- tests/check_deprecations.lua. A deprecated call from controlk's own code fails at once.
+dofile(vim.fn.getcwd() .. "/tests/support/deprecations.lua").install(
+  vim.fn.getcwd(),
+  os.getenv("DEPRECATION_REPORT")
+)
 local SRC = vim.fn.getcwd() .. "/tests/integration/fixtures"
 local FIX = os.getenv("FIXTURES") or vim.fn.tempname()
 local SESSION = os.getenv("SESSION") or "lsp"

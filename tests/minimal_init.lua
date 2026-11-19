@@ -1,4 +1,6 @@
 local root = vim.fn.getcwd()
+-- Before any plugin loads, so every vim.deprecate call goes through the hook.
+dofile(root .. "/tests/support/deprecations.lua").install(root, os.getenv("DEPRECATION_REPORT"))
 vim.opt.rtp:append(root)
 
 local plenary = os.getenv("PLENARY_DIR") or vim.fn.expand("~/.local/share/nvim/lazy/plenary.nvim")

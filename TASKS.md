@@ -4,12 +4,13 @@ Status as of the last session. Re-check with `git status` and `git log` before a
 
 ## Repository state
 
-- `HEAD` is the commit after `72ea0af`, which holds the rest of the project. `72ea0af` still
-  contains only `.luarc.json`, because its commit window ran a newline-joined pathspec.
-- Every file is tracked as of the second commit, including `doc/controlk.txt` and the design under
-  `docs/superpowers/specs/`.
-- Remote `origin` is `git@github.com:hebercosfer/telescope-controlk.nvim.git`, private. `main` is
-  pushed through `4141a9f`.
+- Changes go on `feature/` or `bugfix/` branches and land on `main` by PR, once CI is green.
+- Remote `origin` is `git@github.com:hebercosfer/telescope-controlk.nvim.git`, private.
+- CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`: four Neovim and
+  Telescope pairs, each running the unit specs and the integration harness, plus lint and an
+  aggregate `tests` check. The pairs are in `docs/superpowers/specs/2026-11-18-version-matrix-design.md`.
+- The harness fails on any deprecated call from controlk's own code, and on any upstream
+  deprecation not named in `tests/deprecations-allow.txt` (see `tests/check_deprecations.lua`).
 
 ## Blocked on the owner
 
@@ -62,8 +63,9 @@ Ordered by value. Each item lists its acceptance check.
   the prefixes work the same way, and the LSP session's counts match the Telescope run.
 - **T12. Check Neovim 0.11.** Only 0.12.6 has been tested. Run both suites on 0.11, or change the
   README's "Neovim 0.11+" claim to 0.12.
-- **T13. Consider a CI workflow.** Only after T3. Run the unit suite, and the integration harness with
-  clangd, cmake and ctest installed.
+- **T13. Consider a CI workflow.** Done 2026-11-19 (PR #2), with the deprecation check added
+  after it. Still to build, from the version-matrix design: the README's Neovim floor (0.10.4),
+  the weekly `compat.yml` job, and the release workflow.
 
 ## Known limitations (no task yet)
 
@@ -72,4 +74,4 @@ Ordered by value. Each item lists its acceptance check.
 - `f` lists directories and opens them with netrw. It does not create files, which Qt Creator does.
 - `files` uses `rg --files`, which skips hidden paths. There is no option to include them.
 - The picker title is fixed to "Locator".
-- The integration harness is not run in CI. It depends on local clangd, cmake and ctest.
+- The harness has run only on Linux. macOS and Windows belong to the release gate.
