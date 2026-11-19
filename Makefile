@@ -21,6 +21,8 @@ test:
 # The integration harness drives the real picker in two sessions. It also loads
 # telescope-fzf-native, as the owner's config does. A failed check exits non-zero.
 # Both sessions append to one deprecation report, checked once they are done.
+# run.lua quits on its own when it finishes. The cquit after it runs only when the script
+# stopped on an error, which would otherwise leave headless Neovim waiting forever.
 test-integration:
 	mkdir -p $(dir $(DEPRECATION_REPORT))
 	rm -f $(DEPRECATION_REPORT)
@@ -28,7 +30,7 @@ test-integration:
 		DEPRECATION_REPORT=$(DEPRECATION_REPORT) SESSION=$$session FZF=1 \
 			$(NVIM_BIN) --headless -u NONE \
 			--cmd "set rtp+=$(CURDIR),$(TELESCOPE_DIR),$(PLENARY_DIR),$(FZF_DIR)" \
-			-c "luafile tests/integration/run.lua" || exit 1; \
+			-c "luafile tests/integration/run.lua" -c "cquit 2" || exit 1; \
 	done
 	$(MAKE) --no-print-directory check-deprecations
 
