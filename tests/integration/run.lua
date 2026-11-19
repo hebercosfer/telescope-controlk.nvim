@@ -339,6 +339,10 @@ local function config_session()
     },
   })
   require("telescope").load_extension("controlk")
+  check(
+    "the default keymap maps <C-k> to the locator",
+    (vim.fn.maparg("<C-k>", "n", false, true).rhs or ""):find("Telescope controlk", 1, true) ~= nil
+  )
 
   say("== customised prefixes")
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")

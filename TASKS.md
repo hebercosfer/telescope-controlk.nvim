@@ -21,9 +21,9 @@ These need a decision or an explicit yes. Do not start them on your own.
       explicit amend request from the owner;
   (b) add a second commit with the remaining files.
   Either way, use the tmux commit window (see CLAUDE.md).
-- **T2. Choose the locator key.** `<c-k>` in normal mode is already window navigation in
-  `~/Workspace/mDotFiles/nvim/.config/nvim/lua/config/options.lua:28`. Pick another key for
-  `:Telescope controlk`, or move the window navigation. The README uses `<C-k>` as an example.
+- **T2. Choose the locator key.** Resolved 2026-11-18: the plugin maps `<C-k>` in normal mode by
+  default, through the `keymap` option. The owner's config frees the key, because Ctrl+K is
+  tmux window navigation for them.
 - **T3. Create the GitHub repository and push.** Done 2026-11-18: private repository, pushed at the
   owner's request.
 

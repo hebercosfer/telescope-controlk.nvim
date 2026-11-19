@@ -42,25 +42,24 @@ Optional:
 With lazy.nvim, using the GitHub repository:
 >lua
     {
-      "hebercosfer/telescope-controlk.nvim",
-      dependencies = {
-        "nvim-telescope/telescope.nvim",
-        "nvim-lua/plenary.nvim",
-      },
+      url = "git@github.com:hebercosfer/telescope-controlk.nvim.git",
+      dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
       config = function()
         require("telescope").load_extension("controlk")
       end,
     },
 <
 
-Then map the picker in normal mode, to a key of your choice. Ctrl+K is not used
-here, because it is window navigation in many configurations:
+The locator is mapped to Ctrl+K in normal mode when the extension loads. Choose
+another key with `keymap` (see |controlk-config|), or set `keymap = false` to map
+nothing. A key you have mapped yourself is never taken over. The mapping is normal
+mode only: in insert mode Ctrl+K starts a digraph.
+
+A key for the locator in your Telescope configuration is a suggestion, not
+something the plugin sets:
 >lua
-    vim.keymap.set("n", "<leader>k", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+    vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
 <
-
-Map it in normal mode only. In insert mode Ctrl+K starts a digraph.
-
 ==============================================================================
 4. SOURCES AND PREFIXES                                          *controlk-sources*
 
@@ -123,6 +122,8 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
     require("telescope").setup({
       extensions = {
         controlk = {
+          -- Normal-mode key for the locator. false maps nothing.
+          keymap = "<C-k>",
           -- Prefix per source. false removes the prefix.
           prefixes = {
             buffers = "o", files = "a", lines = "l", filesystem = "f", help = "?",
