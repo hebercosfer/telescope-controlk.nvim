@@ -608,6 +608,9 @@ local function config_session()
             items = function(query, ctx, done)
               -- Answers later, as a job would, to exercise the async path.
               vim.defer_fn(function()
+                if query == "none" then
+                  return done({})
+                end
                 done({
                   { text = "echo " .. query, detail = ctx.root, passthrough = true },
                   {
@@ -651,6 +654,36 @@ local function config_session()
   rows = type_text(picker, prompt, "g")
   check("a user prefix is suggested", has_tag(rows, "g") and has_display(rows, "Echo source"))
   close(prompt)
+
+  say("== Enter with nothing to act on opens the help")
+  -- Types text, presses Enter through Telescope's real action, and returns the help tag under
+  -- the cursor, or what is open instead.
+  local function help_after(text)
+    local p, b = open_picker(FIX .. "/proj/src/widget.h")
+    type_text(p, b, text)
+    actions.select_default(b)
+    vim.wait(300, function()
+      return vim.bo.filetype == "help"
+    end, 20)
+    if vim.bo.filetype ~= "help" then
+      local what = vim.bo.filetype
+      if vim.api.nvim_buf_is_valid(b) then
+        close(b)
+      end
+      return "<no help: " .. what .. ">"
+    end
+    local tag = vim.api.nvim_get_current_line():match("%*(controlk[^*]+)%*")
+    vim.cmd.helpclose()
+    return tag
+  end
+  local tag = help_after("C zzqqxx")
+  check("an empty list opens the source's help, by id", tag == "controlk-source-lsp_classes", tag)
+  tag = help_after("C ")
+  check("Enter on a hint row opens the help too", tag == "controlk-source-lsp_classes", tag)
+  tag = help_after("g none")
+  check("a user source opens the list of sources", tag == "controlk-sources", tag)
+  tag = help_after("zzqqxx")
+  check("an empty default view opens its help", tag == "controlk-default-view", tag)
 
   say("== command and validation")
   vim.cmd("Telescope controlk")
@@ -715,6 +748,8 @@ end
 -- Generated at run time (not committed): a compile database for clangd and a configured
 -- CMake build directory, so the harness works from a fresh checkout.
 local function prepare()
+  -- Plugin managers generate doc/tags; Enter on an empty list opens controlk's help.
+  vim.cmd.helptags(vim.fn.getcwd() .. "/doc")
   if not os.getenv("FIXTURES") then
     vim.fn.mkdir(FIX, "p")
     vim.fn.system({ "cp", "-R", SRC .. "/.", FIX })

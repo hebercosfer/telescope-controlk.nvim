@@ -77,6 +77,9 @@ into it (`src/` becomes the prompt), while Enter on a file opens it. You can typ
 and every project file instead, as `o` and `a` do, set
 `default_sources = { "buffers", "files", "lines" }`.
 
+When nothing matches, or only a hint is shown, Enter opens the help for the source you typed
+(`:h controlk-source-<id>`), so you can see what it expects.
+
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
 searches the project. The longest matching prefix wins, so `cm` never triggers `c`.
 

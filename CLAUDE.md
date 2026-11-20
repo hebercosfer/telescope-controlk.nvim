@@ -51,8 +51,8 @@ Integration harness (needs clangd, cmake with Ninja, ctest; see the header of `t
     SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
     SESSION=config (same command)
 
-Both must pass before a commit. The last recorded results: unit 101/101; LSP+CMake 54/54;
-config 18/18; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
+Both must pass before a commit. The last recorded results: unit 107/107; LSP+CMake 54/54;
+config 22/22; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
 the deprecation check. Run single specs through the directory runner: `PlenaryBustedFile` ignores
 `tests/minimal_init.lua` and loads the owner's own config, so the deprecation hook is missing there.
 
