@@ -489,6 +489,21 @@ local function lsp_and_cmake()
   end
 
   -- CMake, origin main.cpp in the CMake sample
+  say("== LSP from a buffer with no server (origin: proj/notes.txt)")
+  -- A text file in the project: clangd does not attach to it, but runs for the project. The
+  -- fixture has no .git, so the project root is the current directory.
+  vim.cmd.cd(FIX .. "/proj")
+  picker, prompt = open_picker(FIX .. "/proj/notes.txt")
+  check("clangd is not attached to the text file", #vim.lsp.get_clients({ bufnr = 0 }) == 0)
+  rows = type_text(picker, prompt, "c Widget")
+  check(
+    "c still finds classes through the project's clangd",
+    has_tag(rows, "class") and has_display(rows, "Widget")
+  )
+  rows = type_text(picker, prompt, ". width")
+  check("the document's own symbols still need an attached server", rows[1] and rows[1].value.hint)
+  close(prompt)
+
   vim.cmd.cd(FIX .. "/cmake_proj")
   say("== CMake (origin: cmake_proj/src/main.cpp)")
   picker, prompt = open_picker(FIX .. "/cmake_proj/src/main.cpp")

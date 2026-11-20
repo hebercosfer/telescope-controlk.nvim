@@ -168,13 +168,50 @@ Workspace symbols (`:`)                         *controlk-source-lsp_symbols*
 Workspace classes (`c`)                         *controlk-source-lsp_classes*
 Workspace functions (`m`)                     *controlk-source-lsp_functions*
     Ask the language servers attached to the current buffer for
-    `workspace/symbol`; `c` keeps classes, structs and enums, `m` functions,
+    `workspace/symbol`, or, when none is attached, the servers running for
+    the same project. `c` keeps classes, structs and enums, `m` functions,
     methods and constructors. They need at least `lsp.min_query` characters:
     servers cap an empty query (clangd returns 100 results, mostly from the
-    standard library), so the picker asks you to type instead.
+    standard library), so the picker asks you to type instead. See
+    |controlk-lsp| when results seem to be missing.
 
 Symbols in the current document (`.`)          *controlk-source-lsp_document*
-    `textDocument/documentSymbol` for the current buffer, fuzzy matched.
+    `textDocument/documentSymbol` for the current buffer, fuzzy matched. It
+    needs a server attached to that buffer.
+
+------------------------------------------------------------------------------
+Language servers                                                *controlk-lsp*
+
+`:`, `c` and `m` show what the language server's index holds. With clangd:
+
+1. The server starts when you open a file it handles. Before that, nothing
+   runs, and the locator says "no language server is running for this
+   project: open one of its source files". Once it runs, the locator also
+   asks it from buffers it is not attached to, such as a README or a
+   directory, as long as they are in the same project.
+2. On its first start in a project, clangd indexes every file in
+   `compile_commands.json` in the background. Until it finishes, it knows
+   only the open files, the headers they include and what it indexed so far,
+   so results are partial: opening `main.cpp` first helps only because it
+   includes many headers. The locator shows "clangd is still indexing the
+   project (40%): results may be incomplete" meanwhile. The index is saved in
+   `.cache/clangd/index` in the project, so later sessions are complete at
+   once.
+3. clangd finds `compile_commands.json` in the source file's directories and
+   in a `build/` directory under each of them. CMake writes it only with
+   `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`; the "Configure project" item of the
+   CMake sources passes it. A build directory with another name needs
+   `--compile-commands-dir=<dir>` in clangd's command.
+4. A reply holds at most 100 symbols (clangd's `--limit-results`). When a
+   reply has exactly 100, the locator says so: type more to narrow it, or
+   raise the limit, at some cost in memory per reply.
+
+The first indexing runs at low priority. To finish it sooner:
+>lua
+    vim.lsp.config("clangd", {
+      cmd = { "clangd", "--background-index-priority=normal" },
+    })
+<
 
 CMake targets (`cm`)                            *controlk-source-cmake_targets*
 CMake target definitions (`cmo`)                   *controlk-source-cmake_open*

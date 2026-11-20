@@ -114,6 +114,11 @@ An item is a plain table: `text`, and optionally `detail`, `tag`, `path`, `bufnr
 and a live-grep example. Call `done` on the main loop: wrap it in `vim.schedule` inside a
 `vim.system` callback.
 
+Symbols come from the language server's index. clangd indexes the whole project in the background
+on its first start, and until it finishes `c`, `m` and `:` see only part of the project; the
+locator says so while it lasts. It needs `compile_commands.json`, which the CMake "Configure
+project" item now exports. `:h controlk-lsp` explains the details and the clangd flags that help.
+
 CMake sources use CMake's File API, so they work with Makefiles, Ninja and other generators. The
 build directory is the first one under the project that contains a `CMakeCache.txt`. If none
 exists, the picker offers a "Configure project" item.

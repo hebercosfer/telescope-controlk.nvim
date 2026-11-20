@@ -150,12 +150,21 @@ function M.resolve_build_dir(root, configured)
   return M.build_dirs(root)[1]
 end
 
---- Run `cmake -S root -B build_dir` after writing the File API query, then call done(ok, stderr).
+--- The configure command. It also writes compile_commands.json, which clangd needs to index the
+--- whole project; without it the workspace symbol sources only see the files that are open.
+---@param root string
+---@param build_dir string
+---@return string[]
+function M.configure_command(root, build_dir)
+  return { "cmake", "-S", root, "-B", build_dir, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" }
+end
+
+--- Run the configure command after writing the File API query, then call done(ok, stderr).
 function M.configure(root, build_dir, done)
   local query = build_dir .. "/.cmake/api/v1/query"
   vim.fn.mkdir(query, "p")
   vim.fn.writefile({}, query .. "/codemodel-v2")
-  vim.system({ "cmake", "-S", root, "-B", build_dir }, { text = true }, function(res)
+  vim.system(M.configure_command(root, build_dir), { text = true }, function(res)
     -- Runs in a fast event, but the caller reads the model with vim.fn: hop back to the main loop.
     vim.schedule(function()
       done(res.code == 0, res.stderr)
