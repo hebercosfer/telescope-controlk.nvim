@@ -49,7 +49,8 @@ Ordered by value. Each item lists its acceptance check.
   before showing anything, so a large repository shows nothing until `rg --files` finishes. Show
   buffers first and add the rest as they arrive. Acceptance: on a repository with about 10k files,
   the first buffer entries appear before the file listing completes, and the existing tests pass.
-- **T8. Per-file columns for workspace symbols.** `lsp.lua` converts columns with the origin
+- **T8. Per-file columns for workspace symbols.** Done 2026-11-20: each workspace symbol's
+  column is converted with its own file's line (its buffer if loaded, else the disk). `lsp.lua` converts columns with the origin
   buffer's lines, so symbols in other files can get wrong byte columns when lines contain multibyte
   characters. Convert using the target file's lines. Acceptance: a unit test with a multibyte line
   gives the right column.
