@@ -1,10 +1,12 @@
+local util = require("controlk.util")
+
 return {
   id = "filesystem",
   title = "Files in file system",
   tag = "fs",
   items = function(query, ctx, done)
     local expanded = vim.fn.expand(query)
-    local path = expanded:sub(1, 1) == "/" and expanded or (ctx.root .. "/" .. expanded)
+    local path = util.is_absolute(expanded) and expanded or (ctx.root .. "/" .. expanded)
 
     local dir, base
     if path:sub(-1) == "/" then

@@ -89,7 +89,9 @@ M.defaults = {
   },
   web = {
     -- name -> URL with %s where the query goes. Set an engine to false to remove it.
+    -- "%s" alone opens the query itself as an address (https:// is added without a scheme).
     engines = {
+      Direct = "%s",
       Google = "https://www.google.com/search?q=%s",
       DuckDuckGo = "https://duckduckgo.com/?q=%s",
       Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",

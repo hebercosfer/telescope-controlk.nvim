@@ -59,6 +59,13 @@ function M.project_root(bufnr)
   return vim.fs.root(M.buffer_dir(bufnr), { ".git" }) or vim.fn.getcwd()
 end
 
+--- Whether a path is absolute: `/x`, or on Windows `C:/x`, `C:\x` and `\\server\share`.
+---@param path string
+---@return boolean
+function M.is_absolute(path)
+  return path:sub(1, 1) == "/" or path:match("^%a:[/\\]") ~= nil or path:sub(1, 2) == "\\\\"
+end
+
 --- A non-actionable line, shown for empty queries and errors.
 ---@param text string
 ---@param tag string

@@ -19,7 +19,9 @@ dofile(vim.fn.getcwd() .. "/tests/support/deprecations.lua").install(
   os.getenv("DEPRECATION_REPORT")
 )
 local SRC = vim.fn.getcwd() .. "/tests/integration/fixtures"
-local FIX = os.getenv("FIXTURES") or vim.fn.tempname()
+-- Normalized, and resolved once it exists: macOS keeps temporary files behind a symlink
+-- (/var -> /private/var), and Windows paths come with backslashes.
+local FIX = vim.fs.normalize(os.getenv("FIXTURES") or vim.fn.tempname())
 local SESSION = os.getenv("SESSION") or "lsp"
 local actions = require("telescope.actions")
 local state = require("telescope.actions.state")
@@ -340,7 +342,7 @@ local function lsp_and_cmake()
   check("= evaluates Lua", has_display(rows, "42"))
 
   rows = type_text(picker, prompt, "w widget")
-  check("r offers the four engines", has_tag(rows, "web") and #rows == 4)
+  check("w offers the five engines, Direct included", has_tag(rows, "web") and #rows == 5)
 
   rows = type_text(picker, prompt, ": Telescope")
   check(": finds Ex commands", has_display(rows, "Telescope"))
@@ -554,7 +556,10 @@ local function lsp_and_cmake()
   close(prompt)
 
   -- the picker resolves build-ninja here (build-mk is not configured); start from a clean state
-  local built = FIX .. "/cmake_proj/build-ninja/libcorelib.a"
+  -- libcorelib.a with GCC or Clang, corelib.lib with MSVC.
+  local built = FIX
+    .. "/cmake_proj/build-ninja/"
+    .. (vim.fn.has("win32") == 1 and "corelib.lib" or "libcorelib.a")
   os.remove(built)
   os.remove(FIX .. "/cmake_proj/build-ninja/Testing/Temporary/LastTest.log")
 
@@ -630,13 +635,16 @@ local function lsp_and_cmake()
   vim.ui.open = function(url)
     opened = url
   end
-  enter_on(origin, "w neovim lua", "web")
-  vim.ui.open = real_open
+  enter_on(origin, "w neovim lua", "web", "DuckDuckGo: neovim lua")
   check(
-    "r opens the engine's URL with the query encoded",
+    "w opens the engine's URL with the query encoded",
     opened ~= nil and opened:find("neovim%20lua", 1, true) ~= nil,
     opened
   )
+  opened = nil
+  enter_on(origin, "w neovim.io/doc", "web", "Direct: neovim.io/doc")
+  vim.ui.open = real_open
+  check("w Direct opens the typed address", opened == "https://neovim.io/doc", opened)
 
   local real_feedkeys = vim.api.nvim_feedkeys
   local fed
@@ -903,8 +911,16 @@ local function prepare()
   vim.cmd.helptags(vim.fn.getcwd() .. "/doc")
   if not os.getenv("FIXTURES") then
     vim.fn.mkdir(FIX, "p")
-    vim.fn.system({ "cp", "-R", SRC .. "/.", FIX })
+    -- In Lua, not cp: Windows has none for system().
+    for name, kind in vim.fs.dir(SRC, { depth = math.huge }) do
+      if kind == "directory" then
+        vim.fn.mkdir(FIX .. "/" .. name, "p")
+      else
+        vim.fn.writefile(vim.fn.readfile(SRC .. "/" .. name, "b"), FIX .. "/" .. name, "b")
+      end
+    end
   end
+  FIX = vim.fs.normalize(vim.uv.fs_realpath(FIX) or FIX)
   local proj = FIX .. "/proj"
   local db = {
     {
