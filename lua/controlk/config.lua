@@ -63,8 +63,10 @@ M.defaults = {
   -- Your own sources, keyed by id: { prefix = "g", title = "...", tag = "...", items = fn }.
   -- items(query, ctx, done) calls done with a list of items; see :h controlk-custom-sources.
   sources = {},
-  -- Sources merged together when no prefix is typed.
-  default_sources = { "buffers", "files", "lines" },
+  -- Sources merged together when no prefix is typed: browse the file system from the
+  -- project root, and jump to a line when a number is typed. { "buffers", "files", "lines" }
+  -- searches open buffers and every project file instead.
+  default_sources = { "filesystem", "lines" },
   -- Source ids removed entirely (no prefix, not in the default list).
   disabled = {},
   lsp = {

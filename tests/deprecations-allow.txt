@@ -2,3 +2,4 @@
 # One per line: the deprecated name, the version that deprecates it, and the reason.
 # tests/check_deprecations.lua fails on any reported name that is not listed here.
 # Calls from controlk's own code are never allowed.
+vim.tbl_flatten  0.10  plenary's compat.flatten (scandir.lua) falls back to it on Neovim 0.10 only (0.11+ uses vim.iter). Telescope's previewer calls scandir to preview a directory row, which the default view lists. plenary is archived; no fix upstream.

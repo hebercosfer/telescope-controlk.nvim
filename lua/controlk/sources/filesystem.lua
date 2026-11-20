@@ -14,6 +14,13 @@ return {
     end
 
     local items = {}
+    if vim.fn.isdirectory(dir) == 0 then
+      -- A path typed halfway ("lua/contr/") names no directory yet: nothing to list.
+      return done(items)
+    end
+    -- What was typed up to the last slash ("lua/", "~/src/", "/etc/"), kept as typed so that
+    -- entering a directory extends the query the user wrote.
+    local typed_dir = query:match("^(.*/)") or ""
     for _, name in ipairs(vim.fn.readdir(dir)) do
       if base == "" or name:sub(1, #base):lower() == base:lower() then
         local full = vim.fs.joinpath(dir, name)
@@ -23,6 +30,8 @@ return {
           path = full,
           passthrough = true,
           is_dir = is_dir,
+          -- Enter on a directory goes into it instead of opening it.
+          query = is_dir and (typed_dir .. name .. "/") or nil,
         })
       end
     end

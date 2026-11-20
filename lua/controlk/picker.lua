@@ -312,6 +312,17 @@ function M.open(opts, cfg)
           action_state.get_current_picker(prompt_bufnr):set_prompt(entry.value.prompt)
           return
         end
+        -- An item with a query (a directory in f) replaces the text after the prefix, so the
+        -- same source lists the new query: "f lua/" becomes "f lua/controlk/".
+        if entry and entry.value.query then
+          local p = action_state.get_current_picker(prompt_bufnr)
+          -- The prompt as typed: action_state.get_current_line() holds it after
+          -- on_input_filter_cb, without the prefix.
+          local line = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, 1, false)[1] or ""
+          local _, _, prefix = parse.parse(line:sub(#p.prompt_prefix + 1), cfg.prefix_map)
+          p:set_prompt((prefix and (prefix .. " ") or "") .. entry.value.query)
+          return
+        end
         actions.close(prompt_bufnr)
         if entry then
           util.act(entry.value)

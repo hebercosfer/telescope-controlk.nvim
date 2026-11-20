@@ -107,7 +107,7 @@ Ordered by value. Each item lists its acceptance check.
 
 - clangd returns a class and its constructor as two symbols under `:`. The picker shows both.
   Decide whether to group them.
-- `f` lists directories and opens them with netrw. It does not create files, which Qt Creator does.
+- `f` (and the default view) does not create files, which Qt Creator does.
 - `files` uses `rg --files`, which skips hidden paths. There is no option to include them.
 - The picker title is fixed to "Locator".
 - Telescope bug, not ours: when a resize makes the screen too narrow for the preview, Telescope

@@ -70,11 +70,13 @@ Enter does the action listed. "Needs" lists what a source requires.
 
   Prefix      Source                                     Enter does      Needs
   ----------  -----------------------------------------  --------------  -------------
-  (none)      open buffers, project files, line jump     open
+  (none)      file system (as f), line jump (as l)       open, or enter
+                                                         the directory
   o           open buffers                               open
   a           files in the project                       open            rg or git
   l           line, or line:column, in current buffer    jump
-  f           file system, prefix match on names         open
+  f           file system, prefix match on names         open, or enter
+                                                         the directory
   ?           the prefixes, with their sources           puts prefix in
                                                          the prompt
   h           Neovim help tags                           open help
@@ -104,13 +106,24 @@ replaces it with the chosen prefix and switches to that source; the picker stays
 open.
 
 Prefix suggestions: a partly typed prefix lists the prefixes it could become
-before the usual results. `c` lists `c`, `cm`, `cmo` and `ct`, then the buffers,
-files and lines that match `c`. Enter on a suggestion works as in the `?` list.
+before the usual results. `c` lists `c`, `cm`, `cmo` and `ct`, then the entries
+of the project root that start with `c`. Enter on a suggestion works as in the
+`?` list.
 
 Files: `a` lists project files with rg or git. It skips hidden paths.
 
-File system: `f` lists directories and opens them with netrw. It does not create
-files.
+File system: `f` lists one directory, starting at the project root (the git root
+of the current buffer). Typing narrows by the start of each name, ignoring case.
+A typed path is followed: `src/wid`, `~/notes/`, `/etc/`. Enter on a file opens
+it; Enter on a directory goes into it, putting `src/` in the prompt. Hidden
+entries are listed. It does not create files.
+
+Default view                                             *controlk-default-view*
+
+With no prefix, the locator browses the file system as `f` does, and a number
+jumps to that line as `l` does. `default_sources` sets this: the default is
+`{ "filesystem", "lines" }`. To search open buffers and every project file
+instead, set `default_sources = { "buffers", "files", "lines" }`.
 
 Web: `r` offers the engines in `web.engines`. Enter opens the URL in your browser.
 
@@ -263,8 +276,8 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           },
           -- Your own sources; see |controlk-custom-sources|.
           sources = {},
-          -- Sources merged when no prefix is typed.
-          default_sources = { "buffers", "files", "lines" },
+          -- Sources merged when no prefix is typed; see |controlk-default-view|.
+          default_sources = { "filesystem", "lines" },
           -- Sources removed entirely.
           disabled = {},
           lsp = { min_query = 1 },
@@ -287,7 +300,7 @@ Examples:
     extensions = {
       controlk = {
         prefixes = { lsp_classes = "C", eval = false }, -- C for classes, no Lua prefix
-        default_sources = { "buffers", "files" },       -- drop the line jump
+        default_sources = { "buffers", "files" },       -- fuzzy search, no browsing
         disabled = { "web" },
         web = { engines = { Google = false, Neovim = "https://neovim.io/search/?q=%s" } },
       },
