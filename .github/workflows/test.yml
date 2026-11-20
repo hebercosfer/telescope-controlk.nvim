@@ -1,0 +1,110 @@
+name: test
+
+# One leg of the test matrix: the unit specs and the integration harness (with the
+# deprecation check) on one OS, with one Neovim and one Telescope. CI calls it on ubuntu,
+# the release gate on ubuntu, macOS and Windows, and the weekly job with Telescope master.
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        type: string
+        default: ubuntu-latest
+      neovim:
+        type: string
+        required: true
+      telescope:
+        description: A Telescope tag, commit or branch
+        type: string
+        required: true
+
+jobs:
+  run:
+    name: ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned, so that a change upstream cannot turn this repository red on its own.
+      - name: Check out plenary.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-lua/plenary.nvim
+          ref: 74b06c6c75e4eeb3108ec01852001636d85a932b
+          path: .tests/plenary.nvim
+
+      - name: Check out telescope.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-telescope/telescope.nvim
+          ref: ${{ inputs.telescope }}
+          path: .tests/telescope.nvim
+
+      - name: Check out telescope-fzf-native.nvim
+        uses: actions/checkout@v7
+        with:
+          repository: nvim-telescope/telescope-fzf-native.nvim
+          ref: b25b749b9db64d375d782094e2b9dce53ad53a40
+          path: .tests/telescope-fzf-native.nvim
+
+      - name: Install what the harness needs (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clangd ripgrep ninja-build cmake
+
+      - name: Install what the harness needs (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm ripgrep ninja
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
+
+      - name: Install what the harness needs (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install -y --no-progress llvm ripgrep ninja make
+          echo "C:/Program Files/LLVM/bin" >> "$GITHUB_PATH"
+
+      # cl.exe and the MSVC libraries on PATH, for CMake's Ninja builds of the fixtures.
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # CMake builds it the same way on every OS (its README documents this build).
+      - name: Build telescope-fzf-native.nvim
+        working-directory: .tests/telescope-fzf-native.nvim
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          cmake --install build --prefix build
+
+      # Unpacks under TMPDIR, then renames into the home directory. runner.temp keeps
+      # that rename on one filesystem (see floating-claude.nvim's ci.yml).
+      - uses: rhysd/action-setup-vim@v1
+        env:
+          TMPDIR: ${{ runner.temp }}
+        with:
+          neovim: true
+          version: ${{ inputs.neovim }}
+
+      - name: Record the versions
+        run: |
+          nvim --version | head -1
+          clangd --version | head -1
+          cmake --version | head -1
+          rg --version | head -1
+
+      - name: Unit tests
+        env:
+          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
+        run: make test
+
+      - name: Integration tests
+        env:
+          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
+          TELESCOPE_DIR: ${{ github.workspace }}/.tests/telescope.nvim
+          FZF_DIR: ${{ github.workspace }}/.tests/telescope-fzf-native.nvim
+        run: make test-integration

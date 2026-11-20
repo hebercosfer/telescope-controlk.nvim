@@ -10,6 +10,7 @@ end
 
 local function check_neovim()
   health.start("controlk: Neovim and plugins")
+  health.info("controlk " .. require("controlk.version").version)
   local v = vim.version()
   local version = ("%d.%d.%d"):format(v.major, v.minor, v.patch)
   if vim.fn.has("nvim-0.10.4") == 1 then

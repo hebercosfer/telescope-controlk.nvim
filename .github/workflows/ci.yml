@@ -13,7 +13,6 @@ concurrency:
 jobs:
   test:
     name: test (nvim ${{ matrix.neovim }}, telescope ${{ matrix.telescope.name }})
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -29,66 +28,11 @@ jobs:
           # The current pair: Telescope master, pinned to a commit that is moved by hand.
           - neovim: v0.12.6
             telescope: { name: master, ref: 1e1bab730218eaf97fce743be3f56e51075928ac }
-
-    steps:
-      - uses: actions/checkout@v7
-
-      # Pinned, so that a change upstream cannot turn this repository red on its own.
-      - name: Check out plenary.nvim
-        uses: actions/checkout@v7
-        with:
-          repository: nvim-lua/plenary.nvim
-          ref: 74b06c6c75e4eeb3108ec01852001636d85a932b
-          path: .tests/plenary.nvim
-
-      - name: Check out telescope.nvim
-        uses: actions/checkout@v7
-        with:
-          repository: nvim-telescope/telescope.nvim
-          ref: ${{ matrix.telescope.ref }}
-          path: .tests/telescope.nvim
-
-      - name: Check out telescope-fzf-native.nvim
-        uses: actions/checkout@v7
-        with:
-          repository: nvim-telescope/telescope-fzf-native.nvim
-          ref: b25b749b9db64d375d782094e2b9dce53ad53a40
-          path: .tests/telescope-fzf-native.nvim
-
-      - name: Build telescope-fzf-native.nvim
-        run: make -C .tests/telescope-fzf-native.nvim
-
-      - name: Install what the harness needs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clangd ripgrep ninja-build cmake
-
-      # Unpacks under TMPDIR, then renames into the home directory. runner.temp keeps
-      # that rename on one filesystem (see floating-claude.nvim's ci.yml).
-      - uses: rhysd/action-setup-vim@v1
-        env:
-          TMPDIR: ${{ runner.temp }}
-        with:
-          neovim: true
-          version: ${{ matrix.neovim }}
-
-      - name: Record the versions
-        run: |
-          nvim --version | head -1
-          clangd --version | head -1
-          cmake --version | head -1
-
-      - name: Unit tests
-        env:
-          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
-        run: make test
-
-      - name: Integration tests
-        env:
-          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
-          TELESCOPE_DIR: ${{ github.workspace }}/.tests/telescope.nvim
-          FZF_DIR: ${{ github.workspace }}/.tests/telescope-fzf-native.nvim
-        run: make test-integration
+    uses: ./.github/workflows/test.yml
+    with:
+      os: ubuntu-latest
+      neovim: ${{ matrix.neovim }}
+      telescope: ${{ matrix.telescope.ref }}
 
   lint:
     name: lint
