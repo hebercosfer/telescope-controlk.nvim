@@ -39,23 +39,26 @@ M.defaults = {
   -- Prefix per source. A prefix must be followed by a space ("c Widget").
   -- Set a source to false to drop its prefix; it stays reachable through
   -- default_sources if it is listed there, otherwise it is unreachable.
+  -- Chosen to read like Vim (`:` commands, `b` buffers, `'` marks). Qt Creator's own set is
+  -- one `prefixes` table away; see :h controlk-qt-prefixes.
   prefixes = {
-    buffers = "o",
-    files = "a",
+    buffers = "b",
+    files = "p",
     lines = "l",
     filesystem = "f",
     help = "h",
     -- Lists the prefixes; picking one puts it in the prompt.
     prefixes = "?",
-    commands = "t",
-    marks = "b",
+    commands = ":",
+    marks = "'",
     eval = "=",
     shell = "!",
-    web = "r",
-    lsp_symbols = ":",
+    web = "w",
+    lsp_symbols = "s",
     lsp_classes = "c",
     lsp_functions = "m",
     lsp_document = ".",
+    lsp_references = "r",
     cmake_targets = "cm",
     cmake_open = "cmo",
     cmake_tests = "ct",
@@ -90,7 +93,7 @@ M.defaults = {
       Google = "https://www.google.com/search?q=%s",
       DuckDuckGo = "https://duckduckgo.com/?q=%s",
       Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",
-      cppreference = "https://en.cppreference.com/mwiki/index.php?search=%s",
+      cppreference = "https://en.cppreference.com/index.php?search=%s",
     },
   },
 }

@@ -176,3 +176,19 @@ describe("lsp symbol columns", function()
     vim.fn.delete(path)
   end)
 end)
+
+describe("lsp references", function()
+  it("asks for an attached server", function()
+    local got
+    lsp.lsp_references.items("", {
+      origin_buf = vim.api.nvim_create_buf(false, true),
+      origin_win = vim.api.nvim_get_current_win(),
+      cache = {},
+    }, function(items)
+      got = items
+    end)
+    assert.are.equal(1, #got)
+    assert.is_true(got[1].hint)
+    assert.matches("textDocument/references", got[1].text)
+  end)
+end)
