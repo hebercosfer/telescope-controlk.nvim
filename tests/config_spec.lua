@@ -4,9 +4,15 @@ describe("config.resolve", function()
   it("is valid with no options", function()
     local cfg, errors = config.resolve(nil)
     assert.are.same({}, errors)
-    assert.are.equal("buffers", cfg.prefix_map["o"])
+    assert.are.equal("buffers", cfg.prefix_map["b"])
     assert.are.equal("lsp_classes", cfg.prefix_map["c"])
     assert.are.equal("cmake_open", cfg.prefix_map["cmo"])
+    assert.are.equal("commands", cfg.prefix_map[":"])
+    assert.are.equal("lsp_symbols", cfg.prefix_map["s"])
+    assert.are.equal("lsp_references", cfg.prefix_map["r"])
+    assert.are.equal("web", cfg.prefix_map["w"])
+    assert.are.equal("marks", cfg.prefix_map["'"])
+    assert.are.equal("files", cfg.prefix_map["p"])
   end)
 
   it("renames a prefix and frees the old one", function()
@@ -180,7 +186,7 @@ describe("config.resolve with user sources", function()
     assert.are.equal("Multi grep", source.title)
     assert.are.equal("grep", source.tag)
     assert.are.equal(items, source.items)
-    assert.are.equal("buffers", cfg.prefix_map["o"])
+    assert.are.equal("buffers", cfg.prefix_map["b"])
   end)
 
   it("defaults the title and the tag to the id", function()
@@ -220,10 +226,10 @@ describe("config.resolve with user sources", function()
   end)
 
   it("keeps the built-in when a user source takes its prefix", function()
-    local cfg, errors = config.resolve({ sources = { aaa = { prefix = "o", items = items } } })
+    local cfg, errors = config.resolve({ sources = { aaa = { prefix = "b", items = items } } })
     assert.are.equal(1, #errors)
     assert.is_truthy(errors[1]:find("keeping 'buffers'", 1, true))
-    assert.are.equal("buffers", cfg.prefix_map["o"])
+    assert.are.equal("buffers", cfg.prefix_map["b"])
   end)
 
   it("ignores a source that reuses a built-in id", function()
@@ -254,7 +260,7 @@ describe("config.resolve with user sources", function()
     local cfg, errors = config.resolve({ sources = "nope" })
     assert.are.equal(1, #errors)
     assert.is_truthy(errors[1]:find("invalid sources", 1, true))
-    assert.are.equal("buffers", cfg.prefix_map["o"])
+    assert.are.equal("buffers", cfg.prefix_map["b"])
   end)
 end)
 
@@ -352,5 +358,26 @@ describe("config.resolve lsp.result_limit", function()
     local cfg, errors = config.resolve({ lsp = { result_limit = "many" } })
     assert.are.same({ 'invalid lsp.result_limit: "many"' }, errors)
     assert.are.equal(100, cfg.lsp.result_limit)
+  end)
+end)
+
+describe("Qt Creator's prefixes", function()
+  it("resolve cleanly, as :h controlk-qt-prefixes shows them", function()
+    local cfg, errors = config.resolve({
+      prefixes = {
+        buffers = "o",
+        files = "a",
+        commands = "t",
+        marks = "b",
+        web = "r",
+        lsp_symbols = ":",
+        lsp_references = false,
+      },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+    assert.are.equal("lsp_symbols", cfg.prefix_map[":"])
+    assert.are.equal("web", cfg.prefix_map["r"])
+    assert.are.equal("marks", cfg.prefix_map["b"])
   end)
 end)

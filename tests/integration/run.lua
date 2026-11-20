@@ -243,7 +243,7 @@ local function cutie_checks()
       "after resume, an empty prompt still hides the list",
       hidden(picker.results_win) and hidden(picker.preview_win)
     )
-    local resumed = type_text(picker, prompt, "o ")
+    local resumed = type_text(picker, prompt, "b ")
     check("after resume, a prefix still switches the source", only_tag(resumed, "buffer"))
     close(prompt)
   else
@@ -309,7 +309,7 @@ local function lsp_and_cmake()
   rows = type_text(picker, prompt, "4")
   check("default still jumps to a line number", has_display(rows, "Line 4"))
 
-  rows = type_text(picker, prompt, "o ")
+  rows = type_text(picker, prompt, "b ")
   check("o lists only buffers", only_tag(rows, "buffer") and #rows >= 1)
 
   rows = type_text(picker, prompt, "l 4")
@@ -318,10 +318,10 @@ local function lsp_and_cmake()
   rows = type_text(picker, prompt, "l 7:3")
   check("l 7:3 gives line and column", has_display(rows, "Line 7, column 3"))
 
-  rows = type_text(picker, prompt, "a widget")
-  check("a finds files by name", has_display(rows, "widget.h") and has_tag(rows, "file"))
+  rows = type_text(picker, prompt, "p widget")
+  check("p finds files by name", has_display(rows, "widget.h") and has_tag(rows, "file"))
 
-  rows = type_text(picker, prompt, ": Widget")
+  rows = type_text(picker, prompt, "s Widget")
   check("colon finds workspace symbols", has_display(rows, "Widget") and has_tag(rows, "sym"))
 
   rows = type_text(picker, prompt, "c Widget")
@@ -339,11 +339,11 @@ local function lsp_and_cmake()
   rows = type_text(picker, prompt, "= 2*21")
   check("= evaluates Lua", has_display(rows, "42"))
 
-  rows = type_text(picker, prompt, "r widget")
+  rows = type_text(picker, prompt, "w widget")
   check("r offers the four engines", has_tag(rows, "web") and #rows == 4)
 
-  rows = type_text(picker, prompt, "t Telescope")
-  check("t finds Ex commands", has_display(rows, "Telescope"))
+  rows = type_text(picker, prompt, ": Telescope")
+  check(": finds Ex commands", has_display(rows, "Telescope"))
 
   rows = type_text(picker, prompt, "h lua-guide")
   check("h finds help tags", has_tag(rows, "help") and #rows > 0)
@@ -432,7 +432,7 @@ local function lsp_and_cmake()
   local unnamed = vim.api.nvim_get_current_buf()
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   check("a wide screen shows the preview", picker.previewer ~= nil and picker.preview_win ~= nil)
-  for _, text in ipairs({ "? ", "t Telescope", "r widget", "o ", "" }) do
+  for _, text in ipairs({ "? ", ": Telescope", "w widget", "b ", "" }) do
     type_text(picker, prompt, text)
     for _ = 1, 3 do
       local ok, err = pcall(actions.move_selection_next, prompt)
@@ -597,15 +597,15 @@ local function lsp_and_cmake()
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
 
-  say("== Enter acts (t, b, r, !, =)")
+  say("== Enter acts (:, ', w, !, =, r)")
   -- Opens the locator, types text, selects the first row with `tag` and presses Enter through
   -- Telescope's real select action.
-  local function enter_on(origin, text, tag)
+  local function enter_on(origin, text, tag, row_text)
     local p, b = open_picker(origin)
     local found = type_text(p, b, text)
     for _ = 1, #found do
       local entry = state.get_selected_entry()
-      if entry and entry.value.tag == tag then
+      if entry and entry.value.tag == tag and (not row_text or entry.value.text == row_text) then
         break
       end
       actions.move_selection_next(b)
@@ -630,7 +630,7 @@ local function lsp_and_cmake()
   vim.ui.open = function(url)
     opened = url
   end
-  enter_on(origin, "r neovim lua", "web")
+  enter_on(origin, "w neovim lua", "web")
   vim.ui.open = real_open
   check(
     "r opens the engine's URL with the query encoded",
@@ -643,14 +643,39 @@ local function lsp_and_cmake()
   vim.api.nvim_feedkeys = function(keys)
     fed = keys
   end
-  enter_on(origin, "t Telescope", "cmd")
+  enter_on(origin, ": Telescope", "cmd", "Telescope")
   vim.api.nvim_feedkeys = real_feedkeys
-  check("t puts the command on the command line", fed == ":Telescope ", vim.inspect(fed))
+  check(": puts a listed command on the command line", fed == ":Telescope ", vim.inspect(fed))
+
+  vim.g.controlk_ran = nil
+  enter_on(origin, ": let g:controlk_ran = 7", "cmd")
+  check(": runs what was typed from its first row", vim.g.controlk_ran == 7, vim.g.controlk_ran)
+
+  vim.cmd.edit(origin)
+  vim.fn.cursor(1, 1)
+  vim.fn.search("\\<Widget::Widget\\>")
+  local refs_from = vim.api.nvim_win_get_cursor(0)
+  -- The harness started clangd for widget.h only; a real config attaches it to every C++ buffer.
+  local clangd = vim.lsp.get_clients({ name = "clangd" })[1]
+  if clangd then
+    vim.lsp.buf_attach_client(0, clangd.id)
+    vim.wait(3000, function()
+      return #vim.lsp.get_clients({ bufnr = 0, name = "clangd" }) > 0
+    end, 50)
+  end
+  local rp, rb = open_picker(origin)
+  local refs = type_text(rp, rb, "r ")
+  close(rb)
+  check(
+    "r lists the references to the symbol under the cursor",
+    only_tag(refs, "ref") and #refs >= 2,
+    ("%d rows from %d:%d"):format(#refs, refs_from[1], refs_from[2])
+  )
 
   vim.cmd.edit(FIX .. "/proj/src/main.cpp")
   vim.api.nvim_buf_set_mark(0, "Q", 2, 0, {})
   vim.cmd.edit(origin)
-  enter_on(origin, "b Q", "mark")
+  enter_on(origin, "' Q", "mark")
   check(
     "b jumps to the mark",
     vim.api.nvim_buf_get_name(0) == FIX .. "/proj/src/main.cpp"
@@ -769,13 +794,13 @@ local function config_session()
   vim.fn.writefile({}, FIX .. "/proj/.dotnote")
   local fp, fb = open_picker(FIX .. "/proj/src/widget.h")
   check(
-    "a skips hidden files by default",
-    not has_display(type_text(fp, fb, "a dotnote"), ".dotnote")
+    "p skips hidden files by default",
+    not has_display(type_text(fp, fb, "p dotnote"), ".dotnote")
   )
   close(fb)
   require("controlk").setup({ files = { hidden = true } })
   fp, fb = open_picker(FIX .. "/proj/src/widget.h")
-  check("files.hidden lists them", has_display(type_text(fp, fb, "a dotnote"), ".dotnote"))
+  check("files.hidden lists them", has_display(type_text(fp, fb, "p dotnote"), ".dotnote"))
   close(fb)
   require("controlk").setup({
     prefixes = { lsp_classes = "C", eval = false },

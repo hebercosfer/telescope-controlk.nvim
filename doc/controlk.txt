@@ -35,7 +35,7 @@ v0.2.0, 0.11.7 with v0.2.2, and 0.12.6 with Telescope master.
 
 Optional:
 - ripgrep, for faster file listing. Git is the fallback.
-- A language server for the symbol sources (`:`, `c`, `m`, `.`).
+- A language server for the symbol sources (`s`, `c`, `m`, `.`, `r`).
 - cmake and ctest, for the CMake sources.
 
 ==============================================================================
@@ -73,25 +73,28 @@ Enter does the action listed. "Needs" lists what a source requires.
   ----------  -----------------------------------------  --------------  -------------
   (none)      file system (as f), line jump (as l)       open, or enter
                                                          the directory
-  o           open buffers                               open
-  a           files in the project                       open            rg or git
+  b           open buffers                               open
+  p           files in the project                       open            rg or git
   l           line, or line:column, in current buffer    jump
   f           file system, prefix match on names         open, or enter
                                                          the directory
   ?           the prefixes, with their sources           puts prefix in
                                                          the prompt
   h           Neovim help tags                           open help
-  t           Ex commands                                fills :name
-  b           marks                                      jump
+  :           Ex commands; the first row runs what       runs it, or
+              you typed (: w, : 42)                      fills :name
+  '           marks                                      jump
   =           Lua expression                             copies result
   !           shell command                              runs in terminal
-  r           web search engines                         opens the URL
-  :           workspace symbols                          jump            LSP with
+  w           web search engines                         opens the URL
+  s           workspace symbols                          jump            LSP with
                                                                          workspace/symbol
   c           workspace classes, structs, enums          jump            LSP
   m           workspace functions, methods, constructors jump            LSP
   .           symbols in the current document            jump            LSP with
                                                                          textDocument/documentSymbol
+  r           references to the symbol under the cursor  jump            LSP with
+                                                                         textDocument/references
   cm          CMake build targets                        builds in       cmake
                                                          terminal
   cmo         CMake target definitions                   jump            cmake
@@ -124,11 +127,11 @@ Prefix suggestions                                *controlk-prefix-suggestions*
     project root that start with `c`. Enter on a suggestion works as in the
     `?` list.
 
-Open buffers (`o`)                                  *controlk-source-buffers*
+Open buffers (`b`)                                  *controlk-source-buffers*
     Listed buffers, most recently used first. `[+]` marks a modified buffer.
     Enter switches to it at its last cursor line.
 
-Files in project (`a`)                                *controlk-source-files*
+Files in project (`p`)                                *controlk-source-files*
     Every file under the project root (the git root of the current buffer),
     from `rg --files`, or `git ls-files` without rg. Fuzzy matched on the
     relative path. Hidden and git-ignored files are skipped unless
@@ -148,11 +151,13 @@ File system (`f`)                                *controlk-source-filesystem*
 Help tags (`h`)                                        *controlk-source-help*
     Every help tag on 'runtimepath'. Enter opens the help.
 
-Ex commands (`t`)                                  *controlk-source-commands*
+Ex commands (`:`)                                  *controlk-source-commands*
     Every Ex command, with the definition of user commands. Enter puts
-    `:name ` on the command line, ready for arguments.
+    `:name ` on the command line, ready for arguments. The first row runs
+    what you typed as a command, in the window you came from: `: w`,
+    `: 42`, `: s/old/new/g`. An error is shown, not raised.
 
-Marks (`b`)                                           *controlk-source-marks*
+Marks (`'`)                                           *controlk-source-marks*
     Global marks and the marks of the current buffer. Enter jumps to the mark.
 
 Lua expression (`=`)                                   *controlk-source-eval*
@@ -163,11 +168,11 @@ Shell command (`!`)                                   *controlk-source-shell*
     `! make test` runs the command with 'shell' in a terminal split at the
     bottom of the window, from the project root.
 
-Web search (`r`)                                        *controlk-source-web*
+Web search (`w`)                                        *controlk-source-web*
     One row per engine in `web.engines`. Enter opens the URL with
     |vim.ui.open()|.
 
-Workspace symbols (`:`)                         *controlk-source-lsp_symbols*
+Workspace symbols (`s`)                         *controlk-source-lsp_symbols*
 Workspace classes (`c`)                         *controlk-source-lsp_classes*
 Workspace functions (`m`)                     *controlk-source-lsp_functions*
     Ask the language servers attached to the current buffer for
@@ -178,6 +183,12 @@ Workspace functions (`m`)                     *controlk-source-lsp_functions*
     standard library), so the picker asks you to type instead. See
     |controlk-lsp| when results seem to be missing.
 
+References (`r`)                              *controlk-source-lsp_references*
+    `textDocument/references` for the symbol under the cursor in the window
+    the locator was opened from, its declaration included. The servers
+    answer once; what you type then fuzzy-filters the rows. It needs a
+    server attached to that buffer.
+
 Symbols in the current document (`.`)          *controlk-source-lsp_document*
     `textDocument/documentSymbol` for the current buffer, fuzzy matched. It
     needs a server attached to that buffer.
@@ -185,7 +196,7 @@ Symbols in the current document (`.`)          *controlk-source-lsp_document*
 ------------------------------------------------------------------------------
 Language servers                                                *controlk-lsp*
 
-`:`, `c` and `m` send `workspace/symbol` to your language servers, and show
+`s`, `c` and `m` send `workspace/symbol` to your language servers, and show
 what the servers' indexes hold. This works with any server that supports
 the request. How complete the answer is depends on the server:
 
@@ -377,10 +388,11 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           cutie = { width = 60, height = 15, preview = true },
           -- Prefix per source. false removes the prefix.
           prefixes = {
-            buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
+            buffers = "b", files = "p", lines = "l", filesystem = "f", help = "h",
             prefixes = "?",
-            commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
-            lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+            commands = ":", marks = "'", eval = "=", shell = "!", web = "w",
+            lsp_symbols = "s", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+            lsp_references = "r",
             cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
           },
           -- Your own sources; see |controlk-custom-sources|.
@@ -389,7 +401,7 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           default_sources = { "filesystem", "lines" },
           -- Sources removed entirely.
           disabled = {},
-          -- Files in project (`a`): add hidden or git-ignored files.
+          -- Files in project (`p`): add hidden or git-ignored files.
           files = { hidden = false, ignored = false },
           lsp = { min_query = 1, result_limit = 100 },
           cmake = { build_dir = nil }, -- or "build", or an absolute path
@@ -418,6 +430,17 @@ Examples:
     },
 <
 
+Qt Creator's prefixes                                  *controlk-qt-prefixes*
+
+The defaults follow Vim: `:` for Ex commands as `!` is for the shell, `b` for
+buffers, `'` for marks. If your hands know Qt Creator's locator, this gives
+you its letters back:
+>lua
+    prefixes = {
+      buffers = "o", files = "a", commands = "t", marks = "b", web = "r",
+      lsp_symbols = ":", lsp_references = false,
+    },
+<
 A prefix is removed with `false`. A web engine is removed the same way. Each
 engine's value is a URL with `%s` where the query goes.
 

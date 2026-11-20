@@ -294,6 +294,55 @@ M.lsp_symbols = workspace_source("Workspace symbols", "sym", M.kinds.symbols)
 M.lsp_classes = workspace_source("Workspace classes", "class", M.kinds.classes)
 M.lsp_functions = workspace_source("Workspace functions", "func", M.kinds.functions)
 
+--- References to the symbol under the cursor in the window the locator was opened from. The
+--- servers answer once per session; what is typed then fuzzy-filters the rows.
+M.lsp_references = {
+  title = "References to the symbol under the cursor",
+  tag = "ref",
+  items = function(_, ctx, done)
+    util.memo(ctx, "references", function(finish)
+      local method = "textDocument/references"
+      local clients = vim.lsp.get_clients({ bufnr = ctx.origin_buf, method = method })
+      if #clients == 0 then
+        return finish({
+          util.hint(("no LSP server attached to this buffer supports %s"):format(method), "ref"),
+        })
+      end
+      local items, waiting = {}, #clients
+      for _, client in ipairs(clients) do
+        local params = vim.lsp.util.make_position_params(ctx.origin_win, client.offset_encoding)
+        params.context = { includeDeclaration = true }
+        client_request(client, method, params, function(err, result)
+          if not err and type(result) == "table" then
+            local found = vim.lsp.util.locations_to_items(result, client.offset_encoding)
+            for _, item in ipairs(found) do
+              table.insert(items, {
+                text = vim.trim(item.text or ""),
+                -- With the column: two references on one line would look the same.
+                detail = ("%s:%d:%d"):format(
+                  vim.fn.fnamemodify(item.filename, ":~:."),
+                  item.lnum,
+                  item.col
+                ),
+                path = item.filename,
+                lnum = item.lnum,
+                col = item.col,
+              })
+            end
+          end
+          waiting = waiting - 1
+          if waiting == 0 then
+            if #items == 0 then
+              items = { util.hint("no references to the symbol under the cursor", "ref") }
+            end
+            finish(items)
+          end
+        end, ctx.origin_buf)
+      end
+    end, done)
+  end,
+}
+
 M.lsp_document = {
   title = "Symbols in current document",
   tag = "doc",

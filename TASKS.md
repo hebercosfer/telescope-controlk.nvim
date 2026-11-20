@@ -23,6 +23,16 @@ Open work, roughly in order of value. Changes go on `feature/` or `bugfix/` bran
   maps `items(query, ctx, done)` to a Snacks `finder(opts, ctx)`. Acceptance: the prefixes work
   the same way, and the LSP session's counts match the Telescope run.
 
+## After the first release
+
+- **T16. Visual selection into the locator.** In visual mode, `<leader>k` followed by a prefix
+  key opens the locator with that prefix and the selected text as the query, the text selected
+  in the prompt, so it can be searched as is or typed over. Example: select `Widget`, press
+  `<leader>k` then `c`: the prompt reads `c Widget`. Decide how the prefix key is read (one
+  `getcharstr()` after the mapping, or a mapping per prefix) and what happens with a multi-line
+  selection. Acceptance: harness checks for a one-word selection with `c` and `s`, and the plain
+  `<leader>k` in normal mode is unchanged.
+
 ## Known limitations
 
 - clangd returns a class and its constructor as two workspace symbols, and the picker shows

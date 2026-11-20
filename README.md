@@ -57,21 +57,22 @@ vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" }
 | Prefix | Source | Enter does | Needs |
 |---|---|---|---|
 | (none) | the file system, as `f`, and a line number, as `l` | open, or enter the directory | |
-| `o` | open buffers | open | |
-| `a` | files in the project | open | rg or git |
+| `b` | open buffers | open | |
+| `p` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
 | `f` | file system from the project root, prefix match on names | open, or enter the directory | |
 | `?` | the prefixes in this table, with what each one searches | puts the prefix in the prompt | |
 | `h` | Neovim help tags | open help | |
-| `t` | Ex commands | fills `:name ` for arguments | |
-| `b` | marks | jump | |
+| `:` | Ex commands; the first row runs what you typed (`: w`, `: 42`) | runs it, or fills `:name ` | |
+| `'` | marks | jump | |
 | `=` | Lua expression | copies the result | |
 | `!` | shell command | runs in a terminal | |
-| `r` | web search engines | opens the URL | |
-| `:` | workspace symbols | jump | LSP with `workspace/symbol` |
+| `w` | web search engines | opens the URL | |
+| `s` | workspace symbols | jump | LSP with `workspace/symbol` |
 | `c` | workspace classes, structs, enums | jump | LSP |
 | `m` | workspace functions, methods, constructors | jump | LSP |
 | `.` | symbols in the current document | jump | LSP with `textDocument/documentSymbol` |
+| `r` | references to the symbol under the cursor | jump | LSP with `textDocument/references` |
 | `cm` | CMake build targets | builds in a terminal | cmake |
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
@@ -89,7 +90,7 @@ With no prefix, the locator browses the file system like `f`: it opens on the pr
 git root of the current buffer), narrows by the start of each name, and Enter on a directory goes
 into it (`src/` becomes the prompt), while Enter on a file opens it. You can type a path too:
 `src/wid`, `~/notes/`, `/etc/`. A number jumps to that line, as `l` does. To search open buffers
-and every project file instead, as `o` and `a` do, set
+and every project file instead, as `b` and `p` do, set
 `default_sources = { "buffers", "files", "lines" }`.
 
 When nothing matches, or only a hint is shown, Enter opens the help for the source you typed
@@ -129,7 +130,7 @@ An item is a plain table: `text`, and optionally `detail`, `tag`, `path`, `bufnr
 and a live-grep example. Call `done` on the main loop: wrap it in `vim.schedule` inside a
 `vim.system` callback.
 
-Symbols come from your language servers' indexes, so `c`, `m` and `:` work with any server that
+Symbols come from your language servers' indexes, so `s`, `c` and `m` work with any server that
 supports `workspace/symbol`. Many servers index the project in the background when they start, and
 until they finish the results are partial; the locator says so while it lasts, and also when a
 reply looks cut at the server's result cap (`lsp.result_limit`). Since controlk follows Qt Creator,
@@ -213,10 +214,11 @@ require("telescope").setup({
       cutie = { width = 60, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
-        buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
+        buffers = "b", files = "p", lines = "l", filesystem = "f", help = "h",
         prefixes = "?",
-        commands = "t", marks = "b", eval = "=", shell = "!", web = "r",
-        lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+        commands = ":", marks = "'", eval = "=", shell = "!", web = "w",
+        lsp_symbols = "s", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
+        lsp_references = "r",
         cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
       },
       -- Your own sources, keyed by id: { prefix, title, tag, items }.
@@ -226,7 +228,7 @@ require("telescope").setup({
       default_sources = { "filesystem", "lines" },
       -- Sources removed entirely.
       disabled = {},
-      -- `a` also lists hidden (dotfiles) or git-ignored files. ignored needs rg.
+      -- `p` also lists hidden (dotfiles) or git-ignored files. ignored needs rg.
       files = { hidden = false, ignored = false },
       lsp = { min_query = 1, result_limit = 100 },
       cmake = { build_dir = nil }, -- or "build", or an absolute path
@@ -253,6 +255,18 @@ extensions = {
     disabled = { "web" },
     web = { engines = { Google = false, Neovim = "https://neovim.io/search/?q=%s" } },
   },
+},
+```
+
+### Qt Creator's prefixes
+
+The default prefixes follow Vim: `:` for Ex commands as `!` is for the shell, `b` for buffers, `'`
+for marks. If your hands know Qt Creator's locator, this gives you its letters back:
+
+```lua
+prefixes = {
+  buffers = "o", files = "a", commands = "t", marks = "b", web = "r",
+  lsp_symbols = ":", lsp_references = false,
 },
 ```
 
