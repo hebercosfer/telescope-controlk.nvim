@@ -8,7 +8,7 @@ local function is_locator(rhs)
   return rhs ~= nil and rhs:find("Telescope controlk", 1, true) ~= nil
 end
 
-local KEYS = { "<C-k>", "<F7>", "<F8>" }
+local KEYS = { "<leader>k", "<F7>", "<F8>" }
 
 local function clear_keys()
   for _, lhs in ipairs(KEYS) do
@@ -20,26 +20,26 @@ describe("controlk.setup keymap", function()
   before_each(clear_keys)
   after_each(clear_keys)
 
-  it("maps <C-k> in normal mode by default", function()
+  it("maps <leader>k in normal mode by default", function()
     controlk.setup(nil)
-    assert.is_true(is_locator(rhs_of("<C-k>")))
+    assert.is_true(is_locator(rhs_of("<leader>k")))
   end)
 
-  it("maps the configured key instead of <C-k>", function()
+  it("maps the configured key instead of <leader>k", function()
     controlk.setup({ keymap = "<F7>" })
     assert.is_true(is_locator(rhs_of("<F7>")))
-    assert.is_nil(rhs_of("<C-k>"))
+    assert.is_nil(rhs_of("<leader>k"))
   end)
 
   it("maps nothing when keymap is false", function()
     controlk.setup({ keymap = false })
-    assert.is_nil(rhs_of("<C-k>"))
+    assert.is_nil(rhs_of("<leader>k"))
   end)
 
   it("stays mapped when setup runs again", function()
     controlk.setup(nil)
     controlk.setup(nil)
-    assert.is_true(is_locator(rhs_of("<C-k>")))
+    assert.is_true(is_locator(rhs_of("<leader>k")))
   end)
 
   it("moves the locator when the configured key changes", function()
@@ -47,6 +47,20 @@ describe("controlk.setup keymap", function()
     controlk.setup({ keymap = "<F8>" })
     assert.is_true(is_locator(rhs_of("<F8>")))
     assert.is_nil(rhs_of("<F7>"))
+  end)
+
+  it("uses the leader set when the extension loads", function()
+    local leader = vim.g.mapleader
+    vim.g.mapleader = " "
+    controlk.setup(nil)
+    vim.g.mapleader = leader
+    assert.is_true(is_locator(rhs_of(" k")))
+    pcall(vim.keymap.del, "n", " k")
+  end)
+
+  it("leaves <C-k> alone, for split navigation", function()
+    controlk.setup(nil)
+    assert.is_nil(rhs_of("<C-k>"))
   end)
 
   it("never takes over a mapping of your own", function()

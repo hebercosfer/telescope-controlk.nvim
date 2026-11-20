@@ -595,8 +595,9 @@ local function config_session()
   })
   require("telescope").load_extension("controlk")
   check(
-    "the default keymap maps <C-k> to the locator",
-    (vim.fn.maparg("<C-k>", "n", false, true).rhs or ""):find("Telescope controlk", 1, true) ~= nil
+    "the default keymap maps <leader>k to the locator",
+    (vim.fn.maparg("<leader>k", "n", false, true).rhs or ""):find("Telescope controlk", 1, true)
+      ~= nil
   )
 
   say("== customised prefixes")
