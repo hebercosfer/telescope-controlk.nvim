@@ -176,7 +176,54 @@ local function request(ctx, method, params, done)
   end
 end
 
-local function to_items(results, kinds, tag, bufnr, passthrough)
+--- A position's character offset as a byte column (0-based) in `line`.
+---@param line string
+---@param character integer offset in the server's position encoding
+---@param encoding string "utf-8", "utf-16" or "utf-32"
+---@return integer
+function M.byte_col(line, character, encoding)
+  if encoding == "utf-8" then
+    return math.min(character, #line)
+  end
+  local ok, col
+  if vim.fn.has("nvim-0.11") == 1 then
+    ok, col = pcall(vim.str_byteindex, line, encoding, character, false)
+  else
+    ok, col = pcall(vim.str_byteindex, line, character, encoding == "utf-16")
+  end
+  return ok and col or #line
+end
+
+--- Line `lnum` (1-based) of a file: from its buffer when loaded, else from the disk.
+local function file_line(path, lnum, cache)
+  cache[path] = cache[path] or {}
+  if cache[path][lnum] == nil then
+    local bufnr = vim.fn.bufnr(path)
+    local line
+    if bufnr ~= -1 and vim.api.nvim_buf_is_loaded(bufnr) then
+      line = vim.api.nvim_buf_get_lines(bufnr, lnum - 1, lnum, false)[1]
+    else
+      local ok, lines = pcall(vim.fn.readfile, path, "", lnum)
+      line = ok and lines[lnum] or nil
+    end
+    cache[path][lnum] = line or ""
+  end
+  return cache[path][lnum]
+end
+
+--- Neovim converts every symbol's column with the lines of the buffer it is given (the origin
+--- buffer), so a symbol in another file got a wrong byte column after a multibyte character.
+--- Recompute it from the symbol's own file.
+local function fix_column(item, symbol, encoding, cache)
+  local range = symbol.location and symbol.location.range
+  if not range or not item.filename then
+    return
+  end
+  local line = file_line(item.filename, range.start.line + 1, cache)
+  item.col = M.byte_col(line, range.start.character, encoding) + 1
+end
+
+function M.to_items(results, kinds, tag, bufnr, passthrough)
   local items = {}
   for _, result in ipairs(results) do
     local symbols = result.symbols
@@ -185,9 +232,23 @@ local function to_items(results, kinds, tag, bufnr, passthrough)
         return kinds[symbol.kind]
       end, symbols)
     end
-    for _, location in
-      ipairs(vim.lsp.util.symbols_to_items(symbols, bufnr, result.client.offset_encoding))
-    do
+    local encoding = result.client.offset_encoding
+    local locations = {}
+    if symbols[1] and symbols[1].location then
+      -- Workspace symbols: one item per symbol, so each column can be fixed from its own file.
+      local cache = {}
+      for _, symbol in ipairs(symbols) do
+        local item = vim.lsp.util.symbols_to_items({ symbol }, bufnr, encoding)[1]
+        if item then
+          fix_column(item, symbol, encoding, cache)
+          table.insert(locations, item)
+        end
+      end
+    else
+      -- Document symbols: all in the origin buffer, which Neovim converts right.
+      locations = vim.lsp.util.symbols_to_items(symbols, bufnr, encoding)
+    end
+    for _, location in ipairs(locations) do
       table.insert(items, {
         text = location.text,
         path = location.filename,
@@ -214,7 +275,7 @@ local function workspace_source(title, tag, kinds)
       end
 
       request(ctx, "workspace/symbol", { query = query }, function(results, err, clients)
-        local items = to_items(results, kinds, tag, ctx.origin_buf, true)
+        local items = M.to_items(results, kinds, tag, ctx.origin_buf, true)
         local counts = {}
         for _, result in ipairs(results) do
           counts[result.client.id] = #result.symbols
@@ -240,7 +301,7 @@ M.lsp_document = {
     request(ctx, "textDocument/documentSymbol", {
       textDocument = vim.lsp.util.make_text_document_params(ctx.origin_buf),
     }, function(results, err)
-      local items = to_items(results, nil, "doc", ctx.origin_buf, false)
+      local items = M.to_items(results, nil, "doc", ctx.origin_buf, false)
       if err then
         table.insert(items, 1, util.hint(err, "doc"))
       end

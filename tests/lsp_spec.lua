@@ -139,3 +139,40 @@ describe("lsp clients for a request", function()
     assert.are.same({}, (lsp.clients_for(ctx, "textDocument/documentSymbol")))
   end)
 end)
+
+describe("lsp symbol columns", function()
+  it("converts a character offset to a byte column in each encoding", function()
+    local line = "/* é */ struct Widget {};"
+    -- "é" is two bytes in UTF-8, one unit in UTF-16 and UTF-32.
+    assert.are.equal(16, lsp.byte_col(line, 15, "utf-16"))
+    assert.are.equal(16, lsp.byte_col(line, 15, "utf-32"))
+    assert.are.equal(16, lsp.byte_col(line, 16, "utf-8"))
+    assert.are.equal(#line, lsp.byte_col(line, 200, "utf-16"))
+  end)
+
+  it("takes a workspace symbol's column from its own file, not the origin buffer", function()
+    local path = vim.fn.tempname() .. ".h"
+    vim.fn.writefile({ "// header", "/* é */ struct Widget {};" }, path)
+    local origin = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(origin, 0, -1, false, { "int a;", "int bbbbbbbbbbbbbbbbbbbbb;" })
+    local symbol = {
+      name = "Widget",
+      kind = vim.lsp.protocol.SymbolKind.Struct,
+      location = {
+        uri = vim.uri_from_fname(path),
+        range = { start = { line = 1, character = 15 }, ["end"] = { line = 1, character = 21 } },
+      },
+    }
+    local items = lsp.to_items(
+      { { client = { offset_encoding = "utf-16" }, symbols = { symbol } } },
+      nil,
+      "sym",
+      origin,
+      true
+    )
+    assert.are.equal(1, #items)
+    assert.are.equal(2, items[1].lnum)
+    assert.are.equal(17, items[1].col)
+    vim.fn.delete(path)
+  end)
+end)
