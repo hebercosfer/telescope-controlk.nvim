@@ -1,5 +1,6 @@
 -- Registry of every source. A module either returns one source (with an `id`)
--- or a table of sources keyed by their id.
+-- or a table of sources keyed by their id. In the second form only entries with an
+-- `items` function are sources: a module may export helpers next to them (lsp.kinds).
 
 local modules = {
   "buffers",
@@ -25,8 +26,10 @@ for _, name in ipairs(modules) do
     M.by_id[mod.id] = mod
   else
     for id, source in pairs(mod) do
-      source.id = id
-      M.by_id[id] = source
+      if type(source) == "table" and type(source.items) == "function" then
+        source.id = id
+        M.by_id[id] = source
+      end
     end
   end
 end

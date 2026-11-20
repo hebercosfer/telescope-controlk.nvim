@@ -294,3 +294,28 @@ describe("config.resolve with unknown options", function()
     assert.are.same({}, errors)
   end)
 end)
+
+describe("source registry", function()
+  it("holds only sources, not the helpers a source module exports", function()
+    local registry = require("controlk.sources")
+    assert.is_nil(registry.by_id.kinds)
+    for id, source in pairs(registry.by_id) do
+      assert.are.equal("function", type(source.items), id)
+    end
+  end)
+
+  it("lets a user source use a name a module exports as a helper", function()
+    local cfg, errors = config.resolve({
+      sources = {
+        kinds = {
+          prefix = "K",
+          items = function(_, _, done)
+            done({})
+          end,
+        },
+      },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("kinds", cfg.prefix_map["K"])
+  end)
+end)

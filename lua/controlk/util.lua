@@ -67,6 +67,19 @@ function M.hint(text, tag)
   return { text = text, tag = tag, hint = true, passthrough = true }
 end
 
+--- The help tag that explains a source: what Enter on an empty list, or on a hint, opens.
+--- nil is the default view. A source with no section of its own (a user source) gets the
+--- list of sources.
+---@param id string|nil source id, as config.prefix_map gives it
+---@return string tag
+function M.help_tag(id)
+  local tag = id and ("controlk-source-" .. id) or "controlk-default-view"
+  if vim.tbl_contains(vim.fn.getcompletion(tag, "help"), tag) then
+    return tag
+  end
+  return "controlk-sources"
+end
+
 --- Run a command in a terminal split at the bottom of the window.
 --- On Neovim 0.10, jobstart({ term = true }) starts the job in an empty buffer, so
 --- termopen() is used there. From 0.11 on, jobstart is the supported way.

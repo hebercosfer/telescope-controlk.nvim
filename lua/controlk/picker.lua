@@ -306,6 +306,17 @@ function M.open(opts, cfg)
           return
         end
         local entry = action_state.get_selected_entry()
+        -- Nothing to act on: an empty list, or a hint ("type at least 1 character", a Lua
+        -- error). Enter opens the help of the source the prompt selects, so the user learns
+        -- what it expects.
+        if not entry or entry.value.hint then
+          local line = vim.api.nvim_buf_get_lines(prompt_bufnr, 0, 1, false)[1] or ""
+          local p = action_state.get_current_picker(prompt_bufnr)
+          local id = parse.parse(line:sub(#p.prompt_prefix + 1), cfg.prefix_map)
+          actions.close(prompt_bufnr)
+          vim.cmd.help(util.help_tag(id))
+          return
+        end
         -- An item with a prompt (the ? list) rewrites the input and keeps the picker open.
         -- on_input_filter_cb then switches to the source that prompt selects.
         if entry and entry.value.prompt then
@@ -324,9 +335,7 @@ function M.open(opts, cfg)
           return
         end
         actions.close(prompt_bufnr)
-        if entry then
-          util.act(entry.value)
-        end
+        util.act(entry.value)
       end)
       return true
     end,
