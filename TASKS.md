@@ -54,7 +54,9 @@ Ordered by value. Each item lists its acceptance check.
   buffer's lines, so symbols in other files can get wrong byte columns when lines contain multibyte
   characters. Convert using the target file's lines. Acceptance: a unit test with a multibyte line
   gives the right column.
-- **T9. Cover the remaining sources in the harness.** Add checks to `tests/integration/run.lua` for
+- **T9. Cover the remaining sources in the harness.** Done 2026-11-20: Enter through Telescope's
+  real action on `t` (command line, feedkeys stubbed), `b` (mark jump), `r` (`vim.ui.open`
+  stubbed, encoded URL), `!` (terminal) and `=` (register); `f` entering a directory since #9. Add checks to `tests/integration/run.lua` for
   `t` (fills the command line), `b` (marks), `r` (stub `vim.ui.open` and check the URL), `f`
   (directory entry), `!` (terminal opens), `=` (result copied to the unnamed register). Acceptance:
   the LSP session still passes, and the new checks pass.

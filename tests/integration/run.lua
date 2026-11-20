@@ -596,6 +596,71 @@ local function lsp_and_cmake()
     shell_row.run(shell_row)
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
+
+  say("== Enter acts (t, b, r, !, =)")
+  -- Opens the locator, types text, selects the first row with `tag` and presses Enter through
+  -- Telescope's real select action.
+  local function enter_on(origin, text, tag)
+    local p, b = open_picker(origin)
+    local found = type_text(p, b, text)
+    for _ = 1, #found do
+      local entry = state.get_selected_entry()
+      if entry and entry.value.tag == tag then
+        break
+      end
+      actions.move_selection_next(b)
+    end
+    actions.select_default(b)
+    vim.wait(200, function()
+      return false
+    end, 20)
+  end
+  local origin = FIX .. "/proj/src/widget.cpp"
+
+  vim.fn.setreg('"', "")
+  enter_on(origin, "= 6*7", "lua")
+  check(
+    "= copies the result to the unnamed register",
+    vim.fn.getreg('"') == "42",
+    vim.fn.getreg('"')
+  )
+
+  local real_open = vim.ui.open
+  local opened
+  vim.ui.open = function(url)
+    opened = url
+  end
+  enter_on(origin, "r neovim lua", "web")
+  vim.ui.open = real_open
+  check(
+    "r opens the engine's URL with the query encoded",
+    opened ~= nil and opened:find("neovim%20lua", 1, true) ~= nil,
+    opened
+  )
+
+  local real_feedkeys = vim.api.nvim_feedkeys
+  local fed
+  vim.api.nvim_feedkeys = function(keys)
+    fed = keys
+  end
+  enter_on(origin, "t Telescope", "cmd")
+  vim.api.nvim_feedkeys = real_feedkeys
+  check("t puts the command on the command line", fed == ":Telescope ", vim.inspect(fed))
+
+  vim.cmd.edit(FIX .. "/proj/src/main.cpp")
+  vim.api.nvim_buf_set_mark(0, "Q", 2, 0, {})
+  vim.cmd.edit(origin)
+  enter_on(origin, "b Q", "mark")
+  check(
+    "b jumps to the mark",
+    vim.api.nvim_buf_get_name(0) == FIX .. "/proj/src/main.cpp"
+      and vim.api.nvim_win_get_cursor(0)[1] == 2,
+    vim.api.nvim_buf_get_name(0) .. ":" .. vim.api.nvim_win_get_cursor(0)[1]
+  )
+
+  enter_on(origin, "! echo controlk-enter", "shell")
+  check("! through Enter opens a terminal", vim.bo.buftype == "terminal", vim.bo.buftype)
+
   cutie_checks()
 end
 
