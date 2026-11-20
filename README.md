@@ -211,6 +211,8 @@ require("telescope").setup({
       default_sources = { "filesystem", "lines" },
       -- Sources removed entirely.
       disabled = {},
+      -- `a` also lists hidden (dotfiles) or git-ignored files. ignored needs rg.
+      files = { hidden = false, ignored = false },
       lsp = { min_query = 1, result_limit = 100 },
       cmake = { build_dir = nil }, -- or "build", or an absolute path
       web = {

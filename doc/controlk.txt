@@ -130,7 +130,9 @@ Open buffers (`o`)                                  *controlk-source-buffers*
 Files in project (`a`)                                *controlk-source-files*
     Every file under the project root (the git root of the current buffer),
     from `rg --files`, or `git ls-files` without rg. Fuzzy matched on the
-    relative path. Hidden and git-ignored files are skipped.
+    relative path. Hidden and git-ignored files are skipped unless
+    `files.hidden` or `files.ignored` is true (`ignored` needs rg). `.git`
+    itself is never listed.
 
 Line in current document (`l`)                        *controlk-source-lines*
     `l 42` jumps to line 42, `l 42:7` to line 42, column 7.
@@ -386,6 +388,8 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           default_sources = { "filesystem", "lines" },
           -- Sources removed entirely.
           disabled = {},
+          -- Files in project (`a`): add hidden or git-ignored files.
+          files = { hidden = false, ignored = false },
           lsp = { min_query = 1, result_limit = 100 },
           cmake = { build_dir = nil }, -- or "build", or an absolute path
           web = {
