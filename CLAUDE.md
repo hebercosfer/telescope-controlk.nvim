@@ -51,7 +51,7 @@ Integration harness (needs clangd, cmake with Ninja, ctest; see the header of `t
     SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
     SESSION=config (same command)
 
-Both must pass before a commit. The last recorded results: unit 93/93; LSP+CMake 51/51;
+Both must pass before a commit. The last recorded results: unit 95/95; LSP+CMake 51/51;
 config 18/18; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
 the deprecation check. Run single specs through the directory runner: `PlenaryBustedFile` ignores
 `tests/minimal_init.lua` and loads the owner's own config, so the deprecation hook is missing there.
@@ -74,6 +74,6 @@ Indentation is 2 spaces. The owner formats Lua with stylua.
 ## Other context
 
 - The owner's Neovim config is `~/Workspace/mDotFiles/nvim/.config/nvim` (symlinked from
-  `~/.config/nvim`). It is a separate repository. Its `lua/config/options.lua:28` maps normal-mode
-  `<c-k>` to window navigation, so the locator cannot use `<C-k>` until that is resolved (TASKS.md, T2).
+  `~/.config/nvim`). It is a separate repository. The locator's default key is `<leader>k`, because
+  `<C-k>` is split navigation there and in most configurations (TASKS.md, T2).
 - The owner's dotfiles are not part of this project. Do not change them from here.

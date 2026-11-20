@@ -24,16 +24,17 @@ sources, and cmake and ctest for the CMake sources.
 },
 ```
 
-The locator is mapped to Ctrl+K in normal mode when the extension loads. Choose another
-key with `keymap` in the configuration below, or set `keymap = false` to map nothing.
-A key you have mapped yourself is never taken over. The mapping is normal mode only: in
-insert mode Ctrl+K starts a digraph.
+The locator is mapped to `<leader>k` in normal mode when the extension loads, using the leader
+set at that moment: set `mapleader` before your plugin manager loads plugins, as most
+configurations already do. Choose another key with `keymap` in the configuration below, or set
+`keymap = false` to map nothing. A key you have mapped yourself is never taken over.
 
-A key for the locator in your Telescope configuration is a suggestion, not something the
-plugin sets:
+Qt Creator's own key, Ctrl+K, is not the default because most Neovim configurations use it to move
+between splits. If yours does not, `keymap = "<C-k>"` gives you the Qt Creator key. You can also
+map it yourself:
 
 ```lua
-vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
 ```
 
 ## Sources and prefixes
@@ -164,7 +165,7 @@ require("telescope").setup({
   extensions = {
     controlk = {
       -- Normal-mode key for the locator. false maps nothing.
-      keymap = "<C-k>",
+      keymap = "<leader>k",
       -- How the locator looks: "default", a Telescope layout or theme, or "cutie".
       style = "default",
       -- Passed to Telescope for the Telescope styles.

@@ -22,9 +22,9 @@ These need a decision or an explicit yes. Do not start them on your own.
       explicit amend request from the owner;
   (b) add a second commit with the remaining files.
   Either way, use the tmux commit window (see CLAUDE.md).
-- **T2. Choose the locator key.** Resolved 2026-11-18: the plugin maps `<C-k>` in normal mode by
-  default, through the `keymap` option. The owner's config frees the key, because Ctrl+K is
-  tmux window navigation for them.
+- **T2. Choose the locator key.** Resolved 2026-11-18 with `<C-k>`; changed 2026-11-20 to
+  `<leader>k` (owner's decision), because `<C-k>` is split navigation in most configurations,
+  the owner's included. `keymap = "<C-k>"` still gives the Qt Creator key.
 - **T3. Create the GitHub repository and push.** Done 2026-11-18: private repository, pushed at the
   owner's request.
 

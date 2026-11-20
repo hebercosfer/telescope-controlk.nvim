@@ -26,8 +26,9 @@ local CUTIE_WIDTH, CUTIE_HEIGHT = 60, 15
 
 M.defaults = {
   -- Normal-mode key for the locator, mapped when the extension loads. A key you
-  -- have mapped yourself is never taken over. false maps nothing.
-  keymap = "<C-k>",
+  -- have mapped yourself is never taken over. false maps nothing. Not <C-k>: most
+  -- configurations use it to move between splits.
+  keymap = "<leader>k",
   -- "default" (Telescope's own defaults), a Telescope layout or theme, or "cutie".
   style = "default",
   -- Passed to Telescope as is, for the Telescope styles. Ignored by cutie.

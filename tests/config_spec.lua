@@ -67,10 +67,10 @@ describe("config.resolve", function()
 end)
 
 describe("config.resolve keymap", function()
-  it("defaults the locator key to <C-k>", function()
+  it("defaults the locator key to <leader>k", function()
     local cfg, errors = config.resolve(nil)
     assert.are.same({}, errors)
-    assert.are.equal("<C-k>", cfg.keymap)
+    assert.are.equal("<leader>k", cfg.keymap)
   end)
 
   it("accepts false to map nothing", function()
