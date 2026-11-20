@@ -30,9 +30,6 @@ M.kinds = {
   functions = kind_set({ "Method", "Function", "Constructor" }),
 }
 
--- clangd's default --limit-results. A reply of exactly this many symbols was probably cut.
-M.LIMIT = 100
-
 -- Progress percentages, by client id and progress token. Neovim keeps the titles of running
 -- progress in client.progress.pending, but the percentages only reach LspProgress.
 M.percent = {}
@@ -79,13 +76,15 @@ function M.clients_for(ctx, method)
   return running, false
 end
 
---- Hints about results that may be incomplete: a server still indexing the project, and a
---- reply cut at the server's result limit.
+--- Hints about results that may be incomplete: a server still indexing the project (any
+--- server whose running progress has "index" in its title), and a reply of exactly `limit`
+--- symbols, which was probably cut at the server's cap.
 ---@param clients table[]
 ---@param counts table<integer, integer> symbols each client returned, by client id
 ---@param tag string
+---@param limit integer|false|nil lsp.result_limit; nil or false never warns
 ---@return table[] hints
-function M.status_hints(clients, counts, tag)
+function M.status_hints(clients, counts, tag, limit)
   local hints = {}
   for _, client in ipairs(clients) do
     local pending = client.progress and client.progress.pending or {}
@@ -105,13 +104,13 @@ function M.status_hints(clients, counts, tag)
         break
       end
     end
-    if counts[client.id] == M.LIMIT then
+    if limit and counts[client.id] == limit then
       table.insert(
         hints,
         util.hint(
-          ("%s returned %d results, its limit: type more to narrow them"):format(
+          ("%s returned %d results, which looks like its limit: type more to narrow them"):format(
             client.name,
-            M.LIMIT
+            limit
           ),
           tag
         )
@@ -220,7 +219,7 @@ local function workspace_source(title, tag, kinds)
         for _, result in ipairs(results) do
           counts[result.client.id] = #result.symbols
         end
-        local hints = M.status_hints(clients, counts, tag)
+        local hints = M.status_hints(clients, counts, tag, ctx.config.lsp.result_limit)
         if err then
           table.insert(hints, 1, util.hint(err, tag))
         end

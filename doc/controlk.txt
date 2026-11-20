@@ -182,31 +182,46 @@ Symbols in the current document (`.`)          *controlk-source-lsp_document*
 ------------------------------------------------------------------------------
 Language servers                                                *controlk-lsp*
 
-`:`, `c` and `m` show what the language server's index holds. With clangd:
+`:`, `c` and `m` send `workspace/symbol` to your language servers, and show
+what the servers' indexes hold. This works with any server that supports
+the request. How complete the answer is depends on the server:
 
-1. The server starts when you open a file it handles. Before that, nothing
-   runs, and the locator says "no language server is running for this
-   project: open one of its source files". Once it runs, the locator also
-   asks it from buffers it is not attached to, such as a README or a
-   directory, as long as they are in the same project.
-2. On its first start in a project, clangd indexes every file in
-   `compile_commands.json` in the background. Until it finishes, it knows
-   only the open files, the headers they include and what it indexed so far,
-   so results are partial: opening `main.cpp` first helps only because it
-   includes many headers. The locator shows "clangd is still indexing the
-   project (40%): results may be incomplete" meanwhile. The index is saved in
-   `.cache/clangd/index` in the project, so later sessions are complete at
-   once.
-3. clangd finds `compile_commands.json` in the source file's directories and
-   in a `build/` directory under each of them. CMake writes it only with
-   `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`; the "Configure project" item of the
-   CMake sources passes it. A build directory with another name needs
-   `--compile-commands-dir=<dir>` in clangd's command.
-4. A reply holds at most 100 symbols (clangd's `--limit-results`). When a
-   reply has exactly 100, the locator says so: type more to narrow it, or
-   raise the limit, at some cost in memory per reply.
+1. A server starts when you open a file it handles; |vim.lsp.enable()| or
+   nvim-lspconfig decide which. Before that, nothing runs, and the locator
+   says "no language server is running for this project: open one of its
+   source files". Once one runs, the locator also asks it from buffers it is
+   not attached to, such as a README or a directory, as long as they are in
+   the same project.
+2. Many servers index the whole project in the background when they start.
+   Until that finishes they know only the open files and what they indexed
+   so far, so results are partial. When a server reports progress whose
+   title mentions indexing, the locator shows "<server> is still indexing
+   the project (40%): results may be incomplete".
+3. Servers cap how many symbols a reply holds. When a reply has exactly
+   `lsp.result_limit` symbols (default 100), the locator says it looks cut:
+   type more to narrow it. Set the option to your server's cap, or to
+   `false` to never warn.
+4. `.` sends `textDocument/documentSymbol`, which needs a server attached
+   to the current buffer.
 
-The first indexing runs at low priority. To finish it sooner:
+clangd                                                       *controlk-clangd*
+
+controlk follows Qt Creator, an IDE for C++, so C and C++ with clangd are
+the main case, and the defaults above follow clangd. What it adds:
+
+- clangd indexes every file listed in `compile_commands.json`. Without that
+  file it knows only the open files and the headers they include: opening
+  `main.cpp` first helps only because it includes many headers.
+- It looks for `compile_commands.json` in the source file's directories and
+  in a `build/` directory under each of them. CMake writes it only with
+  `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`; the "Configure project" item of the
+  CMake sources passes it. A build directory with another name needs
+  `--compile-commands-dir=<dir>` in clangd's command.
+- The index is saved in `.cache/clangd/index` in the project, so only the
+  first start is partial; later sessions are complete at once.
+- A reply holds at most 100 symbols (`--limit-results`), which is why
+  `lsp.result_limit` defaults to 100.
+- The first indexing runs at low priority. To finish it sooner:
 >lua
     vim.lsp.config("clangd", {
       cmd = { "clangd", "--background-index-priority=normal" },
@@ -370,7 +385,7 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           default_sources = { "filesystem", "lines" },
           -- Sources removed entirely.
           disabled = {},
-          lsp = { min_query = 1 },
+          lsp = { min_query = 1, result_limit = 100 },
           cmake = { build_dir = nil }, -- or "build", or an absolute path
           web = {
             engines = {

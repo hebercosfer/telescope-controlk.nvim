@@ -114,10 +114,12 @@ An item is a plain table: `text`, and optionally `detail`, `tag`, `path`, `bufnr
 and a live-grep example. Call `done` on the main loop: wrap it in `vim.schedule` inside a
 `vim.system` callback.
 
-Symbols come from the language server's index. clangd indexes the whole project in the background
-on its first start, and until it finishes `c`, `m` and `:` see only part of the project; the
-locator says so while it lasts. It needs `compile_commands.json`, which the CMake "Configure
-project" item now exports. `:h controlk-lsp` explains the details and the clangd flags that help.
+Symbols come from your language servers' indexes, so `c`, `m` and `:` work with any server that
+supports `workspace/symbol`. Many servers index the project in the background when they start, and
+until they finish the results are partial; the locator says so while it lasts, and also when a
+reply looks cut at the server's result cap (`lsp.result_limit`). Since controlk follows Qt Creator,
+a C++ IDE, the help also covers clangd: it needs `compile_commands.json`, which the CMake
+"Configure project" item exports. `:h controlk-lsp` explains both.
 
 CMake sources use CMake's File API, so they work with Makefiles, Ninja and other generators. The
 build directory is the first one under the project that contains a `CMakeCache.txt`. If none
@@ -203,7 +205,7 @@ require("telescope").setup({
       default_sources = { "filesystem", "lines" },
       -- Sources removed entirely.
       disabled = {},
-      lsp = { min_query = 1 },
+      lsp = { min_query = 1, result_limit = 100 },
       cmake = { build_dir = nil }, -- or "build", or an absolute path
       web = {
         engines = {
