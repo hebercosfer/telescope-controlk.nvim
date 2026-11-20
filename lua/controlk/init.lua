@@ -2,7 +2,7 @@ local config = require("controlk.config")
 
 local M = {}
 
-local state = { config = config.resolve(nil) }
+local state = { config = config.resolve(nil), errors = {} }
 
 -- The key this module mapped, so that a later setup can move or remove it.
 local locator_key = nil
@@ -32,6 +32,7 @@ end
 function M.setup(opts)
   local resolved, errors = config.resolve(opts)
   state.config = resolved
+  state.errors = errors
   for _, message in ipairs(errors) do
     vim.notify("controlk: " .. message, vim.log.levels.WARN)
   end
@@ -47,6 +48,11 @@ end
 ---@return table resolved configuration
 function M.config()
   return state.config
+end
+
+---@return string[] problems the last setup reported, for :checkhealth controlk
+function M.errors()
+  return state.errors
 end
 
 return M

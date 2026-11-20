@@ -172,6 +172,12 @@ the row right above the prompt.
 - `cutie.preview`: false turns the preview off. It is also left out when it would be narrower
   than 20 columns.
 
+## Health check
+
+`:checkhealth controlk` checks the Neovim version, Telescope and plenary, the tools the sources
+use, your options, and, for the current project, whether clangd can find `compile_commands.json`
+and which language servers answer workspace symbols. Run it first when a source lists nothing.
+
 ## Configuration
 
 Every option is optional. These are the defaults:

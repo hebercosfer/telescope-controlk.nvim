@@ -700,6 +700,21 @@ local function config_session()
   tag = help_after("zzqqxx")
   check("an empty default view opens its help", tag == "controlk-default-view", tag)
 
+  say("== checkhealth")
+  vim.cmd("checkhealth controlk")
+  local report = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  check(
+    ":checkhealth controlk runs and reports no error",
+    report:find("controlk: Neovim and plugins", 1, true) ~= nil
+      and report:find("ERROR", 1, true) == nil,
+    report:match("[^\n]*ERROR[^\n]*")
+  )
+  check(
+    "it names the running clangd",
+    report:find("clangd answers workspace symbols", 1, true) ~= nil
+  )
+  vim.cmd.bwipeout()
+
   say("== command and validation")
   vim.cmd("Telescope controlk")
   check(
