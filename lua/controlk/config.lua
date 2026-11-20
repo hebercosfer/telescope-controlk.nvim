@@ -22,7 +22,7 @@ M.STYLES = {
 -- cursor, or it covers the window you work in.
 local UNFIT = { cursor = true, current_buffer = true }
 
-local CUTIE_WIDTH, CUTIE_HEIGHT = 40, 15
+local CUTIE_WIDTH, CUTIE_HEIGHT = 60, 15
 
 M.defaults = {
   -- Normal-mode key for the locator, mapped when the extension loads. A key you

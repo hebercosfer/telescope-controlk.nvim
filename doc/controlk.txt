@@ -227,10 +227,10 @@ type. The first character opens the list above the prompt and the preview to
 its right; clearing the prompt hides them again. The best match is the row
 right above the prompt. The status line and the command line stay visible.
 
-  cutie.width     Columns of the prompt and the list. Default 40. "auto"
+  cutie.width     Columns of the prompt and the list. Default 60. "auto"
                   matches a sidebar split on the left: the leftmost window
                   at column 0, narrower than half the screen, from any
-                  plugin. A floating file tree is not a split; it gives 40.
+                  plugin. A floating file tree is not a split; it gives 60.
   cutie.height    Rows of the list. Default 15. A short screen gets fewer.
   cutie.preview   false turns the preview off. It is also left out when it
                   would be narrower than 20 columns.
@@ -250,7 +250,7 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           -- Passed to Telescope for the Telescope styles.
           layout_config = nil,
           -- The cutie style. width: columns, or "auto".
-          cutie = { width = 40, height = 15, preview = true },
+          cutie = { width = 60, height = 15, preview = true },
           -- Prefix per source. false removes the prefix.
           prefixes = {
             buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",

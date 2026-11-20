@@ -200,7 +200,7 @@ local function cutie_checks()
     not hidden(picker.results_win) and not hidden(picker.preview_win)
   )
   local rb = vim.api.nvim_win_get_config(border(picker.results_border))
-  check("the list is cutie.width wide", rb.width == 40, tostring(rb.width))
+  check("the list is cutie.width wide", rb.width == 60, tostring(rb.width))
   check(
     "the best match is next to the prompt",
     picker.sorting_strategy == "descending",

@@ -148,9 +148,9 @@ the row right above the prompt.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-- `cutie.width`: columns of the prompt and the list, 40 by default. `"auto"` matches a sidebar
+- `cutie.width`: columns of the prompt and the list, 60 by default. `"auto"` matches a sidebar
   split on the left (the leftmost window at column 0, narrower than half the screen), whichever
-  plugin draws it; a floating file tree is not a split, so it gives 40.
+  plugin draws it; a floating file tree is not a split, so it gives 60.
 - `cutie.height`: rows of the list, 15 by default. A short screen gets fewer.
 - `cutie.preview`: false turns the preview off. It is also left out when it would be narrower
   than 20 columns.
@@ -170,7 +170,7 @@ require("telescope").setup({
       -- Passed to Telescope for the Telescope styles.
       layout_config = nil,
       -- The cutie style. width: columns, or "auto" to match a sidebar split on the left.
-      cutie = { width = 40, height = 15, preview = true },
+      cutie = { width = 60, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
         buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
