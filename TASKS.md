@@ -5,7 +5,7 @@ Status as of the last session. Re-check with `git status` and `git log` before a
 ## Repository state
 
 - Changes go on `feature/` or `bugfix/` branches and land on `main` by PR, once CI is green.
-- Remote `origin` is `git@github.com:hebercosfer/telescope-controlk.nvim.git`, private.
+- Remote `origin` is github.com/hebercosfer/telescope-controlk.nvim.
 - CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`: four Neovim and
   Telescope pairs, each running the unit specs and the integration harness, plus lint and an
   aggregate `tests` check. The pairs are in `docs/superpowers/specs/2026-11-18-version-matrix-design.md`.
@@ -21,7 +21,7 @@ These need a decision or an explicit yes. Do not start them on your own.
   (a) amend `72ea0af` so it includes every file, reusing the existing message. This needs an
       explicit amend request from the owner;
   (b) add a second commit with the remaining files.
-  Either way, use the tmux commit window (see CLAUDE.md).
+  Either way, follow the commit rules in CLAUDE.md.
 - **T2. Choose the locator key.** Resolved 2026-11-18 with `<C-k>`; changed 2026-11-20 to
   `<leader>k` (owner's decision), because `<C-k>` is split navigation in most configurations,
   the owner's included. `keymap = "<C-k>"` still gives the Qt Creator key.
@@ -66,10 +66,10 @@ Ordered by value. Each item lists its acceptance check.
 - **T11. Snacks adapter (wish, not a requirement).** Add `lua/controlk/snacks.lua`. Sources stay
   unchanged; the adapter maps `items(query, ctx, done)` to a Snacks `finder(opts, ctx)`. Acceptance:
   the prefixes work the same way, and the LSP session's counts match the Telescope run.
-- **T12. Check Neovim 0.11.** Only 0.12.6 has been tested. Run both suites on 0.11, or change the
-  README's "Neovim 0.11+" claim to 0.12.
+- **T12. Check Neovim 0.11.** Done: CI runs both suites on 0.10.4, 0.11.7 and 0.12.6, and the
+  README states 0.10.4 as the floor (2026-11-20).
 - **T13. Consider a CI workflow.** Done 2026-11-19 (PR #2), with the deprecation check added
-  after it. Still to build, from the version-matrix design: the README's Neovim floor (0.10.4),
+  after it. The README's floor (0.10.4) is done. Still to build, from the version-matrix design:
   the weekly `compat.yml` job, and the release workflow.
 
 - **T14. Prefix icons (wish, owner's request 2026-11-19).** When a prefix and a space are typed,
@@ -84,8 +84,8 @@ Ordered by value. Each item lists its acceptance check.
   2026-11-20 on `feature/task-custom-sources`: the `sources` option (`config.resolve` validates it
   and builds `source_map`, which `picker.lua` and the `?` list read instead of the registry; a
   built-in keeps its prefix on a clash), unit specs, three harness checks, and
-  `:h controlk-custom-sources` with the item contract and a live-grep example. Still open: the
-  owner's config part below, which waits for the owner's yes (dotfiles are a separate repo).
+  `:h controlk-custom-sources` with the item contract and a live-grep example. The owner's
+  multigrep now runs as a `g` source in their own configuration, which is a separate repository.
   Original text: today the sources
   are fixed in `sources/init.lua`; `prefixes` can only rename or remove them. Let a user's config
   add a source with its own prefix, then use it in the owner's config for their multigrep.
@@ -96,8 +96,8 @@ Ordered by value. Each item lists its acceptance check.
     as today). They show in the `?` list and in prefix suggestions like any other source.
     Document the item contract (`text`, `path`, `lnum`, `col`, `passthrough`...) for users, since
     it becomes public surface.
-  - In the owner's config (`~/Workspace/mDotFiles`, a separate repository): move the logic of
-    `nvim/.config/nvim/lua/util/multigrep.lua` (mapped to `<leader>mg`) into a controlk source.
+  - In the owner's config (a separate repository): move the logic of their
+    `lua/util/multigrep.lua` (mapped to `<leader>mg`) into a controlk source.
     It runs `rg`; the query is split on two spaces into a pattern (`-e`) and a glob (`-g`), with
     `--smart-case`. Items carry `path`, `lnum` and `col`, and `passthrough = true`, since rg
     already filtered them. Run `rg` with `vim.system` and wrap the callback in `vim.schedule`

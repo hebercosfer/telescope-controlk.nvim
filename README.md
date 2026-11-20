@@ -1,12 +1,27 @@
 # telescope-controlk.nvim
 
 One picker for everything, selected by a prefix, in the style of Qt Creator's Locator (Ctrl+K).
-Type nothing for open buffers, project files and line jumps. Type a prefix and a space to switch
-to a source: symbols, CMake targets, help, commands and more.
+Type nothing to browse the file system. Type a prefix and a space to switch to a source: project
+files, symbols, CMake targets, help, commands and more.
 
-Requirements: Neovim 0.11+ (tested on 0.12), telescope.nvim (master), plenary.nvim.
-Optional: ripgrep (faster file listing; git is the fallback), a language server for symbol
-sources, and cmake and ctest for the CMake sources.
+## Requirements
+
+- Neovim 0.10.4 or newer
+- [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) and
+  [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
+
+Optional: ripgrep (faster file listing; git is the fallback), a language server for the symbol
+sources, and cmake and ctest for the CMake sources. `:checkhealth controlk` tells you what is
+missing.
+
+CI tests these pairs on every change:
+
+| Neovim | Telescope |
+|---|---|
+| 0.10.4 | v0.1.9 |
+| 0.10.4 | v0.2.0 |
+| 0.11.7 | v0.2.2 |
+| 0.12.6 | master |
 
 ## Install
 
@@ -16,7 +31,7 @@ sources, and cmake and ctest for the CMake sources.
   dependencies = { "nvim-lua/plenary.nvim" },
 },
 {
-  url = "git@github.com:hebercosfer/telescope-controlk.nvim.git",
+  "hebercosfer/telescope-controlk.nvim",
   dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
   config = function()
     require("telescope").load_extension("controlk")
@@ -263,3 +278,7 @@ SESSION=config nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/n
 
 The harness works in a temporary copy of `tests/integration/fixtures`, so build output and clangd's
 cache never land in the repository.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

@@ -1,8 +1,9 @@
 # controlk: agent context
 
 A Telescope locator modelled on Qt Creator's Locator (Ctrl+K). One picker; a prefix and a space
-selects a source. Lua, Neovim 0.11+ (tested on 0.12.6), telescope.nvim master, plenary.nvim.
-The owner is Heber (GitHub: hebercosfer). The task list is in TASKS.md; read it before starting work.
+selects a source. Lua, Neovim 0.10.4+ (CI: 0.10.4, 0.11.7, 0.12.6), telescope.nvim, plenary.nvim.
+The repository is github.com/hebercosfer/telescope-controlk.nvim. The task list is in TASKS.md;
+read it before starting work.
 
 ## Layout
 
@@ -54,26 +55,20 @@ Integration harness (needs clangd, cmake with Ninja, ctest; see the header of `t
 Both must pass before a commit. The last recorded results: unit 128/128; LSP+CMake 62/62;
 config 26/26; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
 the deprecation check. Run single specs through the directory runner: `PlenaryBustedFile` ignores
-`tests/minimal_init.lua` and loads the owner's own config, so the deprecation hook is missing there.
+`tests/minimal_init.lua` and loads the user's own config, so the deprecation hook is missing there.
 
-Indentation is 2 spaces. The owner formats Lua with stylua.
+Indentation is 2 spaces. Format Lua with stylua (`.stylua.toml`); `make lint` checks it.
 
 ## Commits and remotes
 
-- The owner's global rules (`~/.claude/CLAUDE.md`) apply. Never run `git commit` from the agent
-  shell. Write the message with a heredoc to `~/.claude/cmsg.txt`, dry-run with the pathspec, then
-  open a tmux window: `tmux new-window -n commit -c <repo> "git commit -e -v -F ~/.claude/cmsg.txt -- <paths>"`.
+- The maintainer's own agent instructions say how commits are made (the maintainer confirms each
+  one in their editor); follow them. Never run `git commit` yourself unless they say so.
 - No `Co-Authored-By` or other trailers.
-- New files need `git add -N <path>` first, because pathspecs cannot match untracked files.
-- Join pathspecs with spaces, never newlines: `FILES=$(git ls-files | tr '\n' ' ')`. A newline
-  list made tmux run each path as a separate shell command, and the first commit ended up with one
-  file (TASKS.md, T1).
-- Do not push, and do not create a GitHub repository, without an explicit yes from the owner.
-- Amend only when the owner asks for an amend.
+- Do not push, and do not create or change a GitHub repository, without an explicit yes from the
+  maintainer. Amend only when the maintainer asks for an amend.
 
 ## Other context
 
-- The owner's Neovim config is `~/Workspace/mDotFiles/nvim/.config/nvim` (symlinked from
-  `~/.config/nvim`). It is a separate repository. The locator's default key is `<leader>k`, because
-  `<C-k>` is split navigation there and in most configurations (TASKS.md, T2).
-- The owner's dotfiles are not part of this project. Do not change them from here.
+- The default key is `<leader>k`, not `<C-k>`: most configurations use `<C-k>` for split navigation
+  (TASKS.md, T2).
+- The maintainer's own Neovim configuration is a separate repository. Do not change it from here.
