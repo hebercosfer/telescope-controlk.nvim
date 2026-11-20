@@ -234,10 +234,12 @@ require("telescope").setup({
       cmake = { build_dir = nil }, -- or "build", or an absolute path
       web = {
         engines = {
+          -- The query itself as an address: `w neovim.io` opens https://neovim.io.
+          Direct = "%s",
           Google = "https://www.google.com/search?q=%s",
           DuckDuckGo = "https://duckduckgo.com/?q=%s",
           Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",
-          cppreference = "https://en.cppreference.com/mwiki/index.php?search=%s",
+          cppreference = "https://en.cppreference.com/index.php?search=%s",
         },
       },
     },
