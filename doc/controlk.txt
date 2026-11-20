@@ -51,15 +51,17 @@ With lazy.nvim, using the GitHub repository:
     },
 <
 
-The locator is mapped to Ctrl+K in normal mode when the extension loads. Choose
-another key with `keymap` (see |controlk-config|), or set `keymap = false` to map
-nothing. A key you have mapped yourself is never taken over. The mapping is normal
-mode only: in insert mode Ctrl+K starts a digraph.
+The locator is mapped to `<leader>k` in normal mode when the extension loads,
+with the leader set at that moment: set |mapleader| before your plugin manager
+loads plugins. Choose another key with `keymap` (see |controlk-config|), or set
+`keymap = false` to map nothing. A key you have mapped yourself is never taken
+over.
 
-A key for the locator in your Telescope configuration is a suggestion, not
-something the plugin sets:
+Qt Creator's own key, Ctrl+K, is not the default because most configurations
+use it to move between splits. If yours does not, `keymap = "<C-k>"` gives you
+the Qt Creator key, or map it yourself:
 >lua
-    vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
+    vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
 <
 ==============================================================================
 4. SOURCES AND PREFIXES                                          *controlk-sources*
@@ -127,6 +129,77 @@ Web: `r` offers the engines in `web.engines`. Enter opens the URL in your browse
 
 Shell: `!` runs the command in a terminal split at the bottom of the window.
 
+------------------------------------------------------------------------------
+Your own sources                                         *controlk-custom-sources*
+
+The `sources` option adds sources of your own, keyed by an id. Each one shows
+in the `?` list and in prefix suggestions like a built-in source.
+>lua
+    sources = {
+      todo = {
+        prefix = "td",           -- optional; `prefixes.todo` overrides it
+        title = "TODO comments", -- optional; shown in the `?` list, default: the id
+        tag = "todo",            -- optional; the tag column, default: the id
+        items = function(query, ctx, done) ... end, -- required
+      },
+    }
+<
+The id must not be a built-in one. A user source can also go in
+`default_sources` and in `disabled`. When it takes a built-in's prefix, the
+built-in keeps it and a warning names both.
+
+`items(query, ctx, done)` is called for every change of the prompt. `query` is
+the text after the prefix and its space. Call `done(list)` once, now or later
+(from a job, for example), with a list of items. `ctx` holds `root` (the
+project root), `origin_buf` and `origin_win` (where the locator was opened),
+`config` (the resolved configuration) and `cache` (a table that lives as long
+as the picker). Callbacks of |vim.system()| run in a fast event: wrap
+`done` in |vim.schedule()| before calling it from there.
+
+An item is a plain table. Every field is optional except `text`:
+
+  `text`         what the row shows
+  `detail`       shown after the text
+  `tag`          the tag column; default: the source's tag
+  `path`         a file to open, and to preview
+  `bufnr`        a buffer to switch to (wins over `path`)
+  `lnum`, `col`  where to put the cursor; 1-based
+  `run`          function(item) called instead of opening anything
+  `passthrough`  true when the source already filtered the results; fuzzy
+                 matching keeps every row, in the source's order
+  `ordinal`      the text fuzzy matching uses; default: `text` and `detail`
+  `hint`         true for a message row; Enter does nothing
+  `prompt`       Enter puts this text in the prompt instead of acting
+  `pinned`       true ranks the row before every unpinned row
+
+Example, a live grep that splits the query on two spaces into a pattern and a
+glob (`g foo  *.lua`):
+>lua
+    items = function(query, ctx, done)
+      local pattern, glob = unpack(vim.split(query, "  ", { plain = true }))
+      if pattern == "" then
+        return done({})
+      end
+      local cmd = { "rg", "--vimgrep", "--smart-case", "-e", pattern }
+      if glob and glob ~= "" then
+        vim.list_extend(cmd, { "-g", glob })
+      end
+      vim.system(cmd, { cwd = ctx.root, text = true }, function(result)
+        local list = {}
+        for line in result.stdout:gmatch("[^\n]+") do
+          local file, lnum, col, text = line:match("^(.-):(%d+):(%d+):(.*)$")
+          if file then
+            table.insert(list, {
+              text = text, detail = file .. ":" .. lnum,
+              path = vim.fs.joinpath(ctx.root, file),
+              lnum = tonumber(lnum), col = tonumber(col), passthrough = true,
+            })
+          end
+        end
+        vim.schedule(function() done(list) end)
+      end)
+    end,
+<
 ==============================================================================
 5. CMAKE                                                          *controlk-cmake*
 
@@ -169,10 +242,10 @@ type. The first character opens the list above the prompt and the preview to
 its right; clearing the prompt hides them again. The best match is the row
 right above the prompt. The status line and the command line stay visible.
 
-  cutie.width     Columns of the prompt and the list. Default 40. "auto"
+  cutie.width     Columns of the prompt and the list. Default 60. "auto"
                   matches a sidebar split on the left: the leftmost window
                   at column 0, narrower than half the screen, from any
-                  plugin. A floating file tree is not a split; it gives 40.
+                  plugin. A floating file tree is not a split; it gives 60.
   cutie.height    Rows of the list. Default 15. A short screen gets fewer.
   cutie.preview   false turns the preview off. It is also left out when it
                   would be narrower than 20 columns.
@@ -186,13 +259,13 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
       extensions = {
         controlk = {
           -- Normal-mode key for the locator. false maps nothing.
-          keymap = "<C-k>",
+          keymap = "<leader>k",
           -- "default", a Telescope layout or theme, or "cutie".
           style = "default",
           -- Passed to Telescope for the Telescope styles.
           layout_config = nil,
           -- The cutie style. width: columns, or "auto".
-          cutie = { width = 40, height = 15, preview = true },
+          cutie = { width = 60, height = 15, preview = true },
           -- Prefix per source. false removes the prefix.
           prefixes = {
             buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
@@ -201,6 +274,8 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
             lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
             cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
           },
+          -- Your own sources; see |controlk-custom-sources|.
+          sources = {},
           -- Sources merged when no prefix is typed; see |controlk-default-view|.
           default_sources = { "filesystem", "lines" },
           -- Sources removed entirely.
@@ -235,8 +310,8 @@ Examples:
 A prefix is removed with `false`. A web engine is removed the same way. Each
 engine's value is a URL with `%s` where the query goes.
 
-Configuration problems (duplicate or invalid prefixes, unknown source ids) are
-reported as warnings when the extension is set up.
+Configuration problems (duplicate or invalid prefixes, unknown source ids,
+invalid user sources) are reported as warnings when the extension is set up.
 
 ==============================================================================
 8. COMMANDS AND LUA API                                        *controlk-commands*

@@ -12,7 +12,6 @@ local config = require("controlk.config")
 local cutie = require("controlk.cutie")
 local parse = require("controlk.parse")
 local prefixes = require("controlk.sources.prefixes")
-local registry = require("controlk.sources")
 local util = require("controlk.util")
 
 local M = {}
@@ -82,13 +81,13 @@ end
 
 local function run_default(query, ctx, done)
   -- A partly typed prefix ("c") lists the prefixes it could become before the usual results.
-  local collected = prefixes.matching(query, ctx.config.prefix_map)
+  local collected = prefixes.matching(query, ctx.config.prefix_map, ctx.config.source_map)
   local function step(index)
     local id = ctx.config.default_sources[index]
     if not id then
       return done(collected)
     end
-    local source = registry.get(id)
+    local source = ctx.config.source_map[id]
     source.items(query, ctx, function(items)
       vim.list_extend(collected, util.tag_items(items, source.tag))
       step(index + 1)
@@ -104,7 +103,7 @@ local function finder_for(id, ctx)
       run_default(query, ctx, done)
     end
   else
-    local source = registry.get(id)
+    local source = ctx.config.source_map[id]
     items = function(query, done)
       source.items(query, ctx, function(list)
         done(util.tag_items(list, source.tag))

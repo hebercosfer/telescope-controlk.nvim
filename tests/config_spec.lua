@@ -72,10 +72,10 @@ describe("config.resolve", function()
 end)
 
 describe("config.resolve keymap", function()
-  it("defaults the locator key to <C-k>", function()
+  it("defaults the locator key to <leader>k", function()
     local cfg, errors = config.resolve(nil)
     assert.are.same({}, errors)
-    assert.are.equal("<C-k>", cfg.keymap)
+    assert.are.equal("<leader>k", cfg.keymap)
   end)
 
   it("accepts false to map nothing", function()
@@ -96,7 +96,7 @@ describe("config.resolve styles", function()
     local cfg, errors = config.resolve(nil)
     assert.are.same({}, errors)
     assert.are.equal("default", cfg.style)
-    assert.are.same({ width = 40, height = 15, preview = true }, cfg.cutie)
+    assert.are.same({ width = 60, height = 15, preview = true }, cfg.cutie)
   end)
 
   it("accepts every Telescope layout and theme, and cutie", function()
@@ -136,7 +136,7 @@ describe("config.resolve styles", function()
     assert.are.equal(32, config.resolve({ cutie = { width = 32 } }).cutie.width)
     for _, bad in ipairs({ 0, -3, 2.5, "wide" }) do
       local cfg, errors = config.resolve({ cutie = { width = bad } })
-      assert.are.equal(40, cfg.cutie.width)
+      assert.are.equal(60, cfg.cutie.width)
       assert.matches("invalid cutie.width", errors[1])
     end
     local cfg, errors = config.resolve({ cutie = { height = 0 } })
@@ -148,7 +148,7 @@ end)
 describe("config.resolve option shapes", function()
   it("warns instead of failing when cutie is not a table", function()
     local cfg, errors = config.resolve({ cutie = false })
-    assert.are.same({ width = 40, height = 15, preview = true }, cfg.cutie)
+    assert.are.same({ width = 60, height = 15, preview = true }, cfg.cutie)
     assert.matches("invalid cutie", errors[1])
   end)
 
@@ -162,5 +162,135 @@ describe("config.resolve option shapes", function()
     local cfg, errors = config.resolve({ cutie = { preview = "yes" } })
     assert.is_true(cfg.cutie.preview)
     assert.matches("invalid cutie.preview", errors[1])
+  end)
+end)
+
+describe("config.resolve with user sources", function()
+  local function items(_, _, done)
+    done({})
+  end
+
+  it("adds a source with its own prefix, title and tag", function()
+    local cfg, errors = config.resolve({
+      sources = { multigrep = { prefix = "g", title = "Multi grep", tag = "grep", items = items } },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("multigrep", cfg.prefix_map["g"])
+    local source = cfg.source_map.multigrep
+    assert.are.equal("Multi grep", source.title)
+    assert.are.equal("grep", source.tag)
+    assert.are.equal(items, source.items)
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+
+  it("defaults the title and the tag to the id", function()
+    local cfg = config.resolve({ sources = { todo = { prefix = "td", items = items } } })
+    assert.are.equal("todo", cfg.source_map.todo.title)
+    assert.are.equal("todo", cfg.source_map.todo.tag)
+  end)
+
+  it("lets prefixes rename or drop a user source's prefix", function()
+    local cfg, errors = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      prefixes = { todo = "T" },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("todo", cfg.prefix_map["T"])
+    assert.is_nil(cfg.prefix_map["td"])
+    cfg = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      prefixes = { todo = false },
+    })
+    assert.is_nil(cfg.prefix_map["td"])
+  end)
+
+  it("accepts a user source in default_sources and disabled", function()
+    local cfg, errors = config.resolve({
+      sources = { todo = { items = items } },
+      default_sources = { "files", "todo" },
+    })
+    assert.are.same({}, errors)
+    assert.are.same({ "files", "todo" }, cfg.default_sources)
+    cfg, errors = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      disabled = { "todo" },
+    })
+    assert.are.same({}, errors)
+    assert.is_nil(cfg.prefix_map["td"])
+  end)
+
+  it("keeps the built-in when a user source takes its prefix", function()
+    local cfg, errors = config.resolve({ sources = { aaa = { prefix = "o", items = items } } })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("keeping 'buffers'", 1, true))
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+
+  it("ignores a source that reuses a built-in id", function()
+    local cfg, errors = config.resolve({ sources = { files = { prefix = "F", items = items } } })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("source 'files' ignored", 1, true))
+    assert.is_nil(cfg.prefix_map["F"])
+    assert.are_not.equal(items, cfg.source_map.files.items)
+  end)
+
+  it("ignores sources without an items function or with a bad prefix", function()
+    local cfg, errors = config.resolve({
+      sources = {
+        nofn = { prefix = "n1" },
+        badprefix = { prefix = "x y", items = items },
+        notable = "rg",
+        badtitle = { title = 3, items = items },
+      },
+    })
+    assert.are.equal(4, #errors)
+    for _, id in ipairs({ "nofn", "badprefix", "notable", "badtitle" }) do
+      assert.is_nil(cfg.source_map[id])
+    end
+    assert.is_nil(cfg.prefix_map["n1"])
+  end)
+
+  it("reports sources that is not a table", function()
+    local cfg, errors = config.resolve({ sources = "nope" })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("invalid sources", 1, true))
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+end)
+
+describe("config.resolve with unknown options", function()
+  it("reports an unknown option", function()
+    local _, errors = config.resolve({ widht = 3 })
+    assert.are.same({ "unknown option 'widht'" }, errors)
+  end)
+
+  it("points a top-level cutie key at the cutie table", function()
+    local cfg, errors = config.resolve({ style = "cutie", width = 20 })
+    assert.are.equal(1, #errors)
+    assert.matches("unknown option 'width' %(did you mean cutie = { width = ... }%?%)", errors[1])
+    assert.are.equal(60, cfg.cutie.width)
+  end)
+
+  it("reports an unknown key inside a fixed option table", function()
+    local _, errors = config.resolve({ cutie = { widht = 20 }, lsp = { min = 2 } })
+    table.sort(errors)
+    assert.are.same({ "unknown option 'cutie.widht'", "unknown option 'lsp.min'" }, errors)
+  end)
+
+  it("accepts every documented option, nil defaults included", function()
+    local _, errors = config.resolve({
+      keymap = false,
+      style = "ivy",
+      layout_config = { height = 0.4 },
+      cutie = { width = "auto", height = 10, preview = false },
+      prefixes = { eval = false },
+      sources = {},
+      default_sources = { "files" },
+      disabled = {},
+      lsp = { min_query = 2 },
+      cmake = { build_dir = "build" },
+      web = { engines = { Mine = "https://x.test/?q=%s" } },
+    })
+    assert.are.same({}, errors)
   end)
 end)

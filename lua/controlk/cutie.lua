@@ -6,7 +6,7 @@
 
 local M = {}
 
-local DEFAULT_WIDTH = 40
+local DEFAULT_WIDTH = 60
 local PROMPT_HEIGHT = 3 -- one line plus its border
 local MIN_PREVIEW = 20
 
@@ -53,7 +53,7 @@ function M.sidebar_width(wins, columns)
   return nil
 end
 
---- cutie.width as a number of columns: "auto" measures a sidebar, else 40. Never wider than
+--- cutie.width as a number of columns: "auto" measures a sidebar, else 60. Never wider than
 --- the screen.
 ---@param width integer|"auto"
 ---@param wins { col: integer, width: integer, floating: boolean }[]

@@ -22,9 +22,9 @@ These need a decision or an explicit yes. Do not start them on your own.
       explicit amend request from the owner;
   (b) add a second commit with the remaining files.
   Either way, use the tmux commit window (see CLAUDE.md).
-- **T2. Choose the locator key.** Resolved 2026-11-18: the plugin maps `<C-k>` in normal mode by
-  default, through the `keymap` option. The owner's config frees the key, because Ctrl+K is
-  tmux window navigation for them.
+- **T2. Choose the locator key.** Resolved 2026-11-18 with `<C-k>`; changed 2026-11-20 to
+  `<leader>k` (owner's decision), because `<C-k>` is split navigation in most configurations,
+  the owner's included. `keymap = "<C-k>"` still gives the Qt Creator key.
 - **T3. Create the GitHub repository and push.** Done 2026-11-18: private repository, pushed at the
   owner's request.
 
@@ -74,6 +74,34 @@ Ordered by value. Each item lists its acceptance check.
   so `picker.lua` and a future Snacks adapter can both draw it, and a user without a Nerd Font
   can turn it off. Acceptance: each default prefix has an icon, the `?` list shows them, and
   turning icons off leaves today's text-only rows.
+
+- **T15. User-defined sources and prefixes (owner's request 2026-11-19).** controlk part done
+  2026-11-20 on `feature/task-custom-sources`: the `sources` option (`config.resolve` validates it
+  and builds `source_map`, which `picker.lua` and the `?` list read instead of the registry; a
+  built-in keeps its prefix on a clash), unit specs, three harness checks, and
+  `:h controlk-custom-sources` with the item contract and a live-grep example. Still open: the
+  owner's config part below, which waits for the owner's yes (dotfiles are a separate repo).
+  Original text: today the sources
+  are fixed in `sources/init.lua`; `prefixes` can only rename or remove them. Let a user's config
+  add a source with its own prefix, then use it in the owner's config for their multigrep.
+  - In controlk: a `sources` option, for example
+    `sources = { multigrep = { prefix = "g", title = "Multi grep", items = function(query, ctx, done) ... end } }`.
+    The registry accepts these next to the built-ins; `config.resolve` validates them (a
+    function `items`, a valid prefix, no clash with a built-in id, the same prefix-clash report
+    as today). They show in the `?` list and in prefix suggestions like any other source.
+    Document the item contract (`text`, `path`, `lnum`, `col`, `passthrough`...) for users, since
+    it becomes public surface.
+  - In the owner's config (`~/Workspace/mDotFiles`, a separate repository): move the logic of
+    `nvim/.config/nvim/lua/util/multigrep.lua` (mapped to `<leader>mg`) into a controlk source.
+    It runs `rg`; the query is split on two spaces into a pattern (`-e`) and a glob (`-g`), with
+    `--smart-case`. Items carry `path`, `lnum` and `col`, and `passthrough = true`, since rg
+    already filtered them. Run `rg` with `vim.system` and wrap the callback in `vim.schedule`
+    (fast-event rule), or reuse `util.await`. Keep `<leader>mg` working, or point it at the
+    locator with the prefix typed. The owner's multigrep opens in Telescope's default layout
+    today; inside controlk it takes the locator's style (cutie for the owner).
+  - Acceptance: unit specs for the option's validation; a harness check that a user source
+    with a prefix lists its rows, and that `?` shows it; the owner's `g pattern  *.lua` gives the
+    same rows as `<leader>mg` with `pattern  *.lua`.
 
 ## Known limitations (no task yet)
 
