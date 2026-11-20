@@ -30,26 +30,150 @@ M.kinds = {
   functions = kind_set({ "Method", "Function", "Constructor" }),
 }
 
---- Send a request to every client attached to the origin buffer.
---- done(results, error_message): results is { { client, symbols } ... }.
-local function request(ctx, method, params, done)
-  local bufnr = ctx.origin_buf
-  if #vim.lsp.get_clients({ bufnr = bufnr, method = method }) == 0 then
-    return done({}, ("no LSP server attached to this buffer supports %s"):format(method))
-  end
+-- Progress percentages, by client id and progress token. Neovim keeps the titles of running
+-- progress in client.progress.pending, but the percentages only reach LspProgress.
+M.percent = {}
+vim.api.nvim_create_autocmd("LspProgress", {
+  group = vim.api.nvim_create_augroup("controlk_lsp_progress", { clear = true }),
+  callback = function(ev)
+    local data = ev.data or {}
+    local params = data.params or {}
+    local value = params.value or {}
+    if not data.client_id or params.token == nil then
+      return
+    end
+    local by_token = M.percent[data.client_id] or {}
+    M.percent[data.client_id] = by_token
+    if value.kind == "end" then
+      by_token[params.token] = nil
+    elseif value.percentage then
+      by_token[params.token] = value.percentage
+    end
+  end,
+})
 
-  vim.lsp.buf_request_all(bufnr, method, params, function(responses)
-    local results, errors = {}, {}
-    for client_id, response in pairs(responses) do
-      local client = vim.lsp.get_client_by_id(client_id)
-      if response.error then
-        table.insert(errors, response.error.message)
-      elseif client and type(response.result) == "table" then
-        table.insert(results, { client = client, symbols = response.result })
+local function same_project(client, root)
+  local dir = client.root_dir or (client.config and client.config.root_dir)
+  if type(dir) ~= "string" or type(root) ~= "string" then
+    return false
+  end
+  return dir == root or vim.startswith(root, dir .. "/") or vim.startswith(dir, root .. "/")
+end
+
+--- The clients to ask. Those attached to the origin buffer; for workspace/symbol, which needs
+--- no buffer, the clients running for the same project when none is attached, so the locator
+--- also finds symbols when opened from a README, a directory or an empty buffer.
+---@return table[] clients
+---@return boolean attached true when they are attached to the origin buffer
+function M.clients_for(ctx, method)
+  local attached = vim.lsp.get_clients({ bufnr = ctx.origin_buf, method = method })
+  if #attached > 0 or method ~= "workspace/symbol" then
+    return attached, true
+  end
+  local running = vim.tbl_filter(function(client)
+    return same_project(client, ctx.root)
+  end, vim.lsp.get_clients({ method = method }))
+  return running, false
+end
+
+--- Hints about results that may be incomplete: a server still indexing the project (any
+--- server whose running progress has "index" in its title), and a reply of exactly `limit`
+--- symbols, which was probably cut at the server's cap.
+---@param clients table[]
+---@param counts table<integer, integer> symbols each client returned, by client id
+---@param tag string
+---@param limit integer|false|nil lsp.result_limit; nil or false never warns
+---@return table[] hints
+function M.status_hints(clients, counts, tag, limit)
+  local hints = {}
+  for _, client in ipairs(clients) do
+    local pending = client.progress and client.progress.pending or {}
+    for token, title in pairs(pending) do
+      if type(title) == "string" and title:lower():find("index", 1, true) then
+        local pct = M.percent[client.id] and M.percent[client.id][token]
+        table.insert(
+          hints,
+          util.hint(
+            ("%s is still indexing the project%s: results may be incomplete"):format(
+              client.name,
+              pct and (" (" .. pct .. "%)") or ""
+            ),
+            tag
+          )
+        )
+        break
       end
     end
-    done(results, #errors > 0 and table.concat(errors, "; ") or nil)
-  end)
+    if limit and counts[client.id] == limit then
+      table.insert(
+        hints,
+        util.hint(
+          ("%s returned %d results, which looks like its limit: type more to narrow them"):format(
+            client.name,
+            limit
+          ),
+          tag
+        )
+      )
+    end
+  end
+  return hints
+end
+
+local function client_request(client, method, params, handler, bufnr)
+  if vim.fn.has("nvim-0.11") == 1 then
+    return client:request(method, params, handler, bufnr)
+  end
+  return client.request(method, params, handler, bufnr)
+end
+
+--- Send a request to the clients for the origin buffer (see clients_for).
+--- done(results, error_message, clients): results is { { client, symbols } ... }.
+local function request(ctx, method, params, done)
+  local bufnr = ctx.origin_buf
+  local clients, attached = M.clients_for(ctx, method)
+  if #clients == 0 then
+    if method == "workspace/symbol" then
+      return done(
+        {},
+        "no language server is running for this project: open one of its source files",
+        {}
+      )
+    end
+    return done({}, ("no LSP server attached to this buffer supports %s"):format(method), {})
+  end
+
+  local results, errors = {}, {}
+  local function collect(client, err, result)
+    if err then
+      table.insert(errors, err.message)
+    elseif client and type(result) == "table" then
+      table.insert(results, { client = client, symbols = result })
+    end
+  end
+  local function finish()
+    done(results, #errors > 0 and table.concat(errors, "; ") or nil, clients)
+  end
+
+  if attached then
+    vim.lsp.buf_request_all(bufnr, method, params, function(responses)
+      for client_id, response in pairs(responses) do
+        collect(vim.lsp.get_client_by_id(client_id), response.error, response.result)
+      end
+      finish()
+    end)
+    return
+  end
+  local waiting = #clients
+  for _, client in ipairs(clients) do
+    client_request(client, method, params, function(err, result)
+      collect(client, err, result)
+      waiting = waiting - 1
+      if waiting == 0 then
+        finish()
+      end
+    end)
+  end
 end
 
 local function to_items(results, kinds, tag, bufnr, passthrough)
@@ -89,12 +213,17 @@ local function workspace_source(title, tag, kinds)
         })
       end
 
-      request(ctx, "workspace/symbol", { query = query }, function(results, err)
+      request(ctx, "workspace/symbol", { query = query }, function(results, err, clients)
         local items = to_items(results, kinds, tag, ctx.origin_buf, true)
-        if err then
-          table.insert(items, 1, util.hint(err, tag))
+        local counts = {}
+        for _, result in ipairs(results) do
+          counts[result.client.id] = #result.symbols
         end
-        done(items)
+        local hints = M.status_hints(clients, counts, tag, ctx.config.lsp.result_limit)
+        if err then
+          table.insert(hints, 1, util.hint(err, tag))
+        end
+        done(vim.list_extend(hints, items))
       end)
     end,
   }

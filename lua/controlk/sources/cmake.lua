@@ -11,11 +11,11 @@ end
 local function configure_item(state)
   return {
     text = "Configure project",
-    detail = ("cmake -S %s -B %s"):format(state.root, state.build_dir),
+    detail = table.concat(cmake.configure_command(state.root, state.build_dir), " "),
     tag = "cmake",
     passthrough = true,
     run = function()
-      util.terminal({ "cmake", "-S", state.root, "-B", state.build_dir }, state.root)
+      util.terminal(cmake.configure_command(state.root, state.build_dir), state.root)
     end,
   }
 end

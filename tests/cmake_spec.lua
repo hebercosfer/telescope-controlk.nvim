@@ -109,3 +109,13 @@ describe("cmake.exact_test_regex", function()
     assert.are.equal("^a\\.b\\(1\\)\\+$", cmake.exact_test_regex("a.b(1)+"))
   end)
 end)
+
+describe("cmake.configure_command", function()
+  it("exports compile_commands.json for clangd", function()
+    local cmd = require("controlk.cmake").configure_command("/p", "/p/build")
+    assert.are.same(
+      { "cmake", "-S", "/p", "-B", "/p/build", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" },
+      cmd
+    )
+  end)
+end)
