@@ -171,7 +171,9 @@ Shell command (`!`)                                   *controlk-source-shell*
 
 Web search (`w`)                                        *controlk-source-web*
     One row per engine in `web.engines`. Enter opens the URL with
-    |vim.ui.open()|.
+    |vim.ui.open()|. An engine whose URL is just `%s`, such as the default
+    `Direct`, opens what you typed as the address itself, unencoded, with
+    `https://` added when there is no scheme: `w neovim.io/doc`.
 
 Workspace symbols (`s`)                         *controlk-source-lsp_symbols*
 Workspace classes (`c`)                         *controlk-source-lsp_classes*
@@ -411,10 +413,12 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           cmake = { build_dir = nil }, -- or "build", or an absolute path
           web = {
             engines = {
+              -- The query itself as an address: `w neovim.io` opens https://neovim.io.
+              Direct = "%s",
               Google = "https://www.google.com/search?q=%s",
               DuckDuckGo = "https://duckduckgo.com/?q=%s",
               Wikipedia = "https://en.wikipedia.org/w/index.php?search=%s",
-              cppreference = "https://en.cppreference.com/mwiki/index.php?search=%s",
+              cppreference = "https://en.cppreference.com/index.php?search=%s",
             },
           },
         },

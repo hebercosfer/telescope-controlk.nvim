@@ -144,7 +144,8 @@ end
 ---@return string|nil
 function M.resolve_build_dir(root, configured)
   if configured then
-    local dir = configured:sub(1, 1) == "/" and configured or (root .. "/" .. configured)
+    local dir = require("controlk.util").is_absolute(configured) and configured
+      or (root .. "/" .. configured)
     return vim.fs.normalize(dir)
   end
   return M.build_dirs(root)[1]

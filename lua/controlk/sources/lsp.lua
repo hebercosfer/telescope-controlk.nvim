@@ -57,6 +57,8 @@ local function same_project(client, root)
   if type(dir) ~= "string" or type(root) ~= "string" then
     return false
   end
+  -- On Windows one side may use backslashes and the other forward slashes.
+  dir, root = vim.fs.normalize(dir), vim.fs.normalize(root)
   return dir == root or vim.startswith(root, dir .. "/") or vim.startswith(dir, root .. "/")
 end
 
