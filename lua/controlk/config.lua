@@ -108,6 +108,37 @@ local function is_valid_prefix(prefix)
   return type(prefix) == "string" and prefix ~= "" and not prefix:find("%s")
 end
 
+-- Every option, and the keys of the option tables whose keys are fixed. Listed by hand: an
+-- option whose default is nil (layout_config, cmake.build_dir) is missing from M.defaults.
+local OPTIONS = vim.tbl_keys(M.defaults)
+table.insert(OPTIONS, "layout_config")
+local FIXED_KEYS = {
+  cutie = { "width", "height", "preview" },
+  lsp = { "min_query" },
+  cmake = { "build_dir" },
+  web = { "engines" },
+}
+
+--- Warn about options that are not ours: a typo, or a cutie key put at the top level, would
+--- otherwise be ignored without a word.
+local function check_unknown(user, errors)
+  for key, value in pairs(user) do
+    if not vim.tbl_contains(OPTIONS, key) then
+      local hint = ""
+      if M.defaults.cutie[key] ~= nil then
+        hint = (" (did you mean cutie = { %s = ... }?)"):format(key)
+      end
+      table.insert(errors, ("unknown option '%s'%s"):format(tostring(key), hint))
+    elseif FIXED_KEYS[key] and type(value) == "table" then
+      for sub in pairs(value) do
+        if not vim.tbl_contains(FIXED_KEYS[key], sub) then
+          table.insert(errors, ("unknown option '%s.%s'"):format(key, tostring(sub)))
+        end
+      end
+    end
+  end
+end
+
 local function is_optional_string(value)
   return value == nil or (type(value) == "string" and value ~= "")
 end
@@ -181,6 +212,7 @@ function M.resolve(user)
   end
 
   local errors = {}
+  check_unknown(user, errors)
   local style, message = M.check_style(cfg.style)
   cfg.style = style
   if message then

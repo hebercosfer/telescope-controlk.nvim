@@ -252,3 +252,40 @@ describe("config.resolve with user sources", function()
     assert.are.equal("buffers", cfg.prefix_map["o"])
   end)
 end)
+
+describe("config.resolve with unknown options", function()
+  it("reports an unknown option", function()
+    local _, errors = config.resolve({ widht = 3 })
+    assert.are.same({ "unknown option 'widht'" }, errors)
+  end)
+
+  it("points a top-level cutie key at the cutie table", function()
+    local cfg, errors = config.resolve({ style = "cutie", width = 20 })
+    assert.are.equal(1, #errors)
+    assert.matches("unknown option 'width' %(did you mean cutie = { width = ... }%?%)", errors[1])
+    assert.are.equal(40, cfg.cutie.width)
+  end)
+
+  it("reports an unknown key inside a fixed option table", function()
+    local _, errors = config.resolve({ cutie = { widht = 20 }, lsp = { min = 2 } })
+    table.sort(errors)
+    assert.are.same({ "unknown option 'cutie.widht'", "unknown option 'lsp.min'" }, errors)
+  end)
+
+  it("accepts every documented option, nil defaults included", function()
+    local _, errors = config.resolve({
+      keymap = false,
+      style = "ivy",
+      layout_config = { height = 0.4 },
+      cutie = { width = "auto", height = 10, preview = false },
+      prefixes = { eval = false },
+      sources = {},
+      default_sources = { "files" },
+      disabled = {},
+      lsp = { min_query = 2 },
+      cmake = { build_dir = "build" },
+      web = { engines = { Mine = "https://x.test/?q=%s" } },
+    })
+    assert.are.same({}, errors)
+  end)
+end)
