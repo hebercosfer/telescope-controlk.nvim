@@ -58,8 +58,8 @@ describe("cutie width", function()
     assert.is_nil(cutie.sidebar_width({ { col = 0, width = 40, floating = true } }, 200))
   end)
 
-  it("resolves auto to the sidebar or 40, and clamps to the screen", function()
-    assert.are.equal(40, cutie.resolve_width("auto", {}, 200))
+  it("resolves auto to the sidebar or 60, and clamps to the screen", function()
+    assert.are.equal(60, cutie.resolve_width("auto", {}, 200))
     assert.are.equal(
       32,
       cutie.resolve_width("auto", { { col = 0, width = 32, floating = false } }, 200)

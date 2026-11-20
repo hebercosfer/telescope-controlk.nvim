@@ -74,6 +74,34 @@ searches the project. The longest matching prefix wins, so `cm` never triggers `
 Symbol sources need at least one character: language servers cap an empty query (clangd returns
 100 results, mostly from the standard library), so the picker asks you to type instead.
 
+### Your own sources
+
+The `sources` option adds sources with their own prefix. They show in the `?` list and in prefix
+suggestions like the built-ins:
+
+```lua
+extensions = {
+  controlk = {
+    sources = {
+      todo = {
+        prefix = "td",
+        title = "TODO comments",
+        items = function(query, ctx, done)
+          -- Call done once, now or later, with a list of items.
+          done({ { text = "fix the parser", path = ctx.root .. "/parse.lua", lnum = 12 } })
+        end,
+      },
+    },
+  },
+},
+```
+
+An item is a plain table: `text`, and optionally `detail`, `tag`, `path`, `bufnr`, `lnum`, `col`,
+`run`, `passthrough` (the source already filtered its rows, so fuzzy matching keeps them all),
+`ordinal`, `hint`, `prompt` and `pinned`. `:h controlk-custom-sources` describes each field, `ctx`,
+and a live-grep example. Call `done` on the main loop: wrap it in `vim.schedule` inside a
+`vim.system` callback.
+
 CMake sources use CMake's File API, so they work with Makefiles, Ninja and other generators. The
 build directory is the first one under the project that contains a `CMakeCache.txt`. If none
 exists, the picker offers a "Configure project" item.
@@ -120,9 +148,9 @@ the row right above the prompt.
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-- `cutie.width`: columns of the prompt and the list, 40 by default. `"auto"` matches a sidebar
+- `cutie.width`: columns of the prompt and the list, 60 by default. `"auto"` matches a sidebar
   split on the left (the leftmost window at column 0, narrower than half the screen), whichever
-  plugin draws it; a floating file tree is not a split, so it gives 40.
+  plugin draws it; a floating file tree is not a split, so it gives 60.
 - `cutie.height`: rows of the list, 15 by default. A short screen gets fewer.
 - `cutie.preview`: false turns the preview off. It is also left out when it would be narrower
   than 20 columns.
@@ -142,7 +170,7 @@ require("telescope").setup({
       -- Passed to Telescope for the Telescope styles.
       layout_config = nil,
       -- The cutie style. width: columns, or "auto" to match a sidebar split on the left.
-      cutie = { width = 40, height = 15, preview = true },
+      cutie = { width = 60, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
         buffers = "o", files = "a", lines = "l", filesystem = "f", help = "h",
@@ -151,6 +179,8 @@ require("telescope").setup({
         lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
         cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
       },
+      -- Your own sources, keyed by id: { prefix, title, tag, items }.
+      sources = {},
       -- Sources merged when no prefix is typed.
       default_sources = { "buffers", "files", "lines" },
       -- Sources removed entirely.

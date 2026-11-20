@@ -200,7 +200,7 @@ local function cutie_checks()
     not hidden(picker.results_win) and not hidden(picker.preview_win)
   )
   local rb = vim.api.nvim_win_get_config(border(picker.results_border))
-  check("the list is cutie.width wide", rb.width == 40, tostring(rb.width))
+  check("the list is cutie.width wide", rb.width == 60, tostring(rb.width))
   check(
     "the best match is next to the prompt",
     picker.sorting_strategy == "descending",
@@ -569,6 +569,27 @@ local function config_session()
       controlk = {
         prefixes = { lsp_classes = "C", eval = false },
         default_sources = { "files" },
+        sources = {
+          echo = {
+            prefix = "g",
+            title = "Echo source",
+            tag = "echo",
+            items = function(query, ctx, done)
+              -- Answers later, as a job would, to exercise the async path.
+              vim.defer_fn(function()
+                done({
+                  { text = "echo " .. query, detail = ctx.root, passthrough = true },
+                  {
+                    text = "widget.h",
+                    path = FIX .. "/proj/src/widget.h",
+                    lnum = 1,
+                    passthrough = true,
+                  },
+                })
+              end, 10)
+            end,
+          },
+        },
       },
     },
   })
@@ -588,6 +609,15 @@ local function config_session()
   check("old prefix c no longer means classes", not has_tag(rows, "class"))
   rows = type_text(picker, prompt, "= 1+1")
   check("eval disabled: no lua rows", not has_tag(rows, "lua"))
+  rows = type_text(picker, prompt, "g zzq")
+  check(
+    "a user source lists its rows under its prefix",
+    only_tag(rows, "echo") and has_display(rows, "echo zzq") and #rows == 2
+  )
+  rows = type_text(picker, prompt, "?")
+  check("? lists a user source", has_tag(rows, "g") and has_display(rows, "Echo source"))
+  rows = type_text(picker, prompt, "g")
+  check("a user prefix is suggested", has_tag(rows, "g") and has_display(rows, "Echo source"))
   close(prompt)
 
   say("== command and validation")

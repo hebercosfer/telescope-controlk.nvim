@@ -22,7 +22,7 @@ M.STYLES = {
 -- cursor, or it covers the window you work in.
 local UNFIT = { cursor = true, current_buffer = true }
 
-local CUTIE_WIDTH, CUTIE_HEIGHT = 40, 15
+local CUTIE_WIDTH, CUTIE_HEIGHT = 60, 15
 
 M.defaults = {
   -- Normal-mode key for the locator, mapped when the extension loads. A key you
@@ -59,6 +59,9 @@ M.defaults = {
     cmake_open = "cmo",
     cmake_tests = "ct",
   },
+  -- Your own sources, keyed by id: { prefix = "g", title = "...", tag = "...", items = fn }.
+  -- items(query, ctx, done) calls done with a list of items; see :h controlk-custom-sources.
+  sources = {},
   -- Sources merged together when no prefix is typed.
   default_sources = { "buffers", "files", "lines" },
   -- Source ids removed entirely (no prefix, not in the default list).
@@ -105,9 +108,92 @@ local function is_valid_prefix(prefix)
   return type(prefix) == "string" and prefix ~= "" and not prefix:find("%s")
 end
 
+-- Every option, and the keys of the option tables whose keys are fixed. Listed by hand: an
+-- option whose default is nil (layout_config, cmake.build_dir) is missing from M.defaults.
+local OPTIONS = vim.tbl_keys(M.defaults)
+table.insert(OPTIONS, "layout_config")
+local FIXED_KEYS = {
+  cutie = { "width", "height", "preview" },
+  lsp = { "min_query" },
+  cmake = { "build_dir" },
+  web = { "engines" },
+}
+
+--- Warn about options that are not ours: a typo, or a cutie key put at the top level, would
+--- otherwise be ignored without a word.
+local function check_unknown(user, errors)
+  for key, value in pairs(user) do
+    if not vim.tbl_contains(OPTIONS, key) then
+      local hint = ""
+      if M.defaults.cutie[key] ~= nil then
+        hint = (" (did you mean cutie = { %s = ... }?)"):format(key)
+      end
+      table.insert(errors, ("unknown option '%s'%s"):format(tostring(key), hint))
+    elseif FIXED_KEYS[key] and type(value) == "table" then
+      for sub in pairs(value) do
+        if not vim.tbl_contains(FIXED_KEYS[key], sub) then
+          table.insert(errors, ("unknown option '%s.%s'"):format(key, tostring(sub)))
+        end
+      end
+    end
+  end
+end
+
+local function is_optional_string(value)
+  return value == nil or (type(value) == "string" and value ~= "")
+end
+
+--- Check the user's sources and add the valid ones to `known`. A source's own prefix applies
+--- unless `prefixes` names that source too.
+---@return string[] ids the user sources accepted, sorted
+local function add_user_sources(cfg, known, errors)
+  local ids = {}
+  if type(cfg.sources) ~= "table" then
+    table.insert(errors, ("invalid sources: %s"):format(vim.inspect(cfg.sources)))
+    cfg.sources = {}
+    return ids
+  end
+  local names = vim.tbl_keys(cfg.sources)
+  table.sort(names, function(a, b)
+    return tostring(a) < tostring(b)
+  end)
+  for _, id in ipairs(names) do
+    local spec = cfg.sources[id]
+    local problem
+    if type(id) ~= "string" or id == "" or id == "default" then
+      problem = "invalid id"
+    elseif known[id] then
+      problem = "the id of a built-in source"
+    elseif type(spec) ~= "table" then
+      problem = "not a table"
+    elseif type(spec.items) ~= "function" then
+      problem = "items is not a function"
+    elseif not is_optional_string(spec.title) or not is_optional_string(spec.tag) then
+      problem = "title and tag must be strings"
+    elseif spec.prefix ~= nil and spec.prefix ~= false and not is_valid_prefix(spec.prefix) then
+      problem = ("invalid prefix %s"):format(vim.inspect(spec.prefix))
+    end
+    if problem then
+      table.insert(errors, ("source '%s' ignored: %s"):format(tostring(id), problem))
+    else
+      known[id] = {
+        id = id,
+        title = spec.title or id,
+        tag = spec.tag or id,
+        items = spec.items,
+      }
+      if cfg.prefixes[id] == nil and spec.prefix ~= nil then
+        cfg.prefixes[id] = spec.prefix
+      end
+      table.insert(ids, id)
+    end
+  end
+  return ids
+end
+
 --- Merge user options over the defaults and validate the result.
 ---@param user table|nil
----@return table config resolved configuration (prefix_map and default_sources included)
+---@return table config resolved configuration (prefix_map, source_map and default_sources included)
 ---@return string[] errors problems found, empty when the configuration is valid
 function M.resolve(user)
   user = user or {}
@@ -126,6 +212,7 @@ function M.resolve(user)
   end
 
   local errors = {}
+  check_unknown(user, errors)
   local style, message = M.check_style(cfg.style)
   cfg.style = style
   if message then
@@ -154,7 +241,12 @@ function M.resolve(user)
   if cfg.keymap ~= false and (type(cfg.keymap) ~= "string" or cfg.keymap == "") then
     table.insert(errors, ("invalid keymap: %s"):format(vim.inspect(cfg.keymap)))
   end
-  local known = registry.by_id
+  -- Every source by id: the built-ins, then the user's.
+  local known = {}
+  for id, source in pairs(registry.by_id) do
+    known[id] = source
+  end
+  local user_ids = add_user_sources(cfg, known, errors)
 
   local function is_disabled(id)
     return vim.tbl_contains(cfg.disabled, id)
@@ -171,8 +263,10 @@ function M.resolve(user)
     end
   end
 
-  local ids = vim.tbl_keys(known)
+  -- Built-ins claim their prefixes first, so a clash keeps the built-in.
+  local ids = vim.tbl_keys(registry.by_id)
   table.sort(ids)
+  vim.list_extend(ids, user_ids)
   local prefix_map = {}
   for _, id in ipairs(ids) do
     local prefix = cfg.prefixes[id]
@@ -208,6 +302,7 @@ function M.resolve(user)
 
   cfg.default_sources = defaults
   cfg.prefix_map = prefix_map
+  cfg.source_map = known
   return cfg, errors
 end
 
