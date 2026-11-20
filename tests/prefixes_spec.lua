@@ -95,3 +95,30 @@ describe("prefixes.matching", function()
     assert.are.same({ "cl", "cm", "cmo" }, tags(prefixes.matching("c", m)))
   end)
 end)
+
+describe("prefixes source with user sources", function()
+  local user = {
+    sources = {
+      multigrep = {
+        prefix = "g",
+        title = "Multi grep",
+        items = function(_, _, done)
+          done({})
+        end,
+      },
+    },
+  }
+
+  it("lists a user source with its title", function()
+    local items = list(user)
+    assert.are.equal("Multi grep", find(items, "g").text)
+  end)
+
+  it("suggests a user source's prefix", function()
+    local cfg = config.resolve(user)
+    local items = prefixes.matching("g", cfg.prefix_map, cfg.source_map)
+    assert.are.equal(1, #items)
+    assert.are.equal("Multi grep", items[1].text)
+    assert.is_true(items[1].pinned)
+  end)
+end)

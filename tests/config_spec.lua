@@ -159,3 +159,96 @@ describe("config.resolve option shapes", function()
     assert.matches("invalid cutie.preview", errors[1])
   end)
 end)
+
+describe("config.resolve with user sources", function()
+  local function items(_, _, done)
+    done({})
+  end
+
+  it("adds a source with its own prefix, title and tag", function()
+    local cfg, errors = config.resolve({
+      sources = { multigrep = { prefix = "g", title = "Multi grep", tag = "grep", items = items } },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("multigrep", cfg.prefix_map["g"])
+    local source = cfg.source_map.multigrep
+    assert.are.equal("Multi grep", source.title)
+    assert.are.equal("grep", source.tag)
+    assert.are.equal(items, source.items)
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+
+  it("defaults the title and the tag to the id", function()
+    local cfg = config.resolve({ sources = { todo = { prefix = "td", items = items } } })
+    assert.are.equal("todo", cfg.source_map.todo.title)
+    assert.are.equal("todo", cfg.source_map.todo.tag)
+  end)
+
+  it("lets prefixes rename or drop a user source's prefix", function()
+    local cfg, errors = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      prefixes = { todo = "T" },
+    })
+    assert.are.same({}, errors)
+    assert.are.equal("todo", cfg.prefix_map["T"])
+    assert.is_nil(cfg.prefix_map["td"])
+    cfg = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      prefixes = { todo = false },
+    })
+    assert.is_nil(cfg.prefix_map["td"])
+  end)
+
+  it("accepts a user source in default_sources and disabled", function()
+    local cfg, errors = config.resolve({
+      sources = { todo = { items = items } },
+      default_sources = { "files", "todo" },
+    })
+    assert.are.same({}, errors)
+    assert.are.same({ "files", "todo" }, cfg.default_sources)
+    cfg, errors = config.resolve({
+      sources = { todo = { prefix = "td", items = items } },
+      disabled = { "todo" },
+    })
+    assert.are.same({}, errors)
+    assert.is_nil(cfg.prefix_map["td"])
+  end)
+
+  it("keeps the built-in when a user source takes its prefix", function()
+    local cfg, errors = config.resolve({ sources = { aaa = { prefix = "o", items = items } } })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("keeping 'buffers'", 1, true))
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+
+  it("ignores a source that reuses a built-in id", function()
+    local cfg, errors = config.resolve({ sources = { files = { prefix = "F", items = items } } })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("source 'files' ignored", 1, true))
+    assert.is_nil(cfg.prefix_map["F"])
+    assert.are_not.equal(items, cfg.source_map.files.items)
+  end)
+
+  it("ignores sources without an items function or with a bad prefix", function()
+    local cfg, errors = config.resolve({
+      sources = {
+        nofn = { prefix = "n1" },
+        badprefix = { prefix = "x y", items = items },
+        notable = "rg",
+        badtitle = { title = 3, items = items },
+      },
+    })
+    assert.are.equal(4, #errors)
+    for _, id in ipairs({ "nofn", "badprefix", "notable", "badtitle" }) do
+      assert.is_nil(cfg.source_map[id])
+    end
+    assert.is_nil(cfg.prefix_map["n1"])
+  end)
+
+  it("reports sources that is not a table", function()
+    local cfg, errors = config.resolve({ sources = "nope" })
+    assert.are.equal(1, #errors)
+    assert.is_truthy(errors[1]:find("invalid sources", 1, true))
+    assert.are.equal("buffers", cfg.prefix_map["o"])
+  end)
+end)

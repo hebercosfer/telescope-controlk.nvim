@@ -75,7 +75,13 @@ Ordered by value. Each item lists its acceptance check.
   can turn it off. Acceptance: each default prefix has an icon, the `?` list shows them, and
   turning icons off leaves today's text-only rows.
 
-- **T15. User-defined sources and prefixes (owner's request 2026-11-19).** Today the sources
+- **T15. User-defined sources and prefixes (owner's request 2026-11-19).** controlk part done
+  2026-11-20 on `feature/task-custom-sources`: the `sources` option (`config.resolve` validates it
+  and builds `source_map`, which `picker.lua` and the `?` list read instead of the registry; a
+  built-in keeps its prefix on a clash), unit specs, three harness checks, and
+  `:h controlk-custom-sources` with the item contract and a live-grep example. Still open: the
+  owner's config part below, which waits for the owner's yes (dotfiles are a separate repo).
+  Original text: today the sources
   are fixed in `sources/init.lua`; `prefixes` can only rename or remove them. Let a user's config
   add a source with its own prefix, then use it in the owner's config for their multigrep.
   - In controlk: a `sources` option, for example
