@@ -69,6 +69,9 @@ M.defaults = {
   default_sources = { "filesystem", "lines" },
   -- Source ids removed entirely (no prefix, not in the default list).
   disabled = {},
+  -- Files in project (`a`). rg skips hidden paths and git-ignored files unless these are true.
+  -- `ignored` needs rg: the git fallback cannot list ignored files.
+  files = { hidden = false, ignored = false },
   lsp = {
     -- workspace/symbol queries need at least this many characters.
     min_query = 1,
@@ -120,6 +123,7 @@ local OPTIONS = vim.tbl_keys(M.defaults)
 table.insert(OPTIONS, "layout_config")
 local FIXED_KEYS = {
   cutie = { "width", "height", "preview" },
+  files = { "hidden", "ignored" },
   lsp = { "min_query", "result_limit" },
   cmake = { "build_dir" },
   web = { "engines" },
@@ -243,6 +247,16 @@ function M.resolve(user)
   if not is_positive_integer(cfg.cutie.height) then
     table.insert(errors, ("invalid cutie.height: %s"):format(vim.inspect(cfg.cutie.height)))
     cfg.cutie.height = CUTIE_HEIGHT
+  end
+  if type(cfg.files) ~= "table" then
+    table.insert(errors, ("invalid files: %s"):format(vim.inspect(cfg.files)))
+    cfg.files = vim.deepcopy(M.defaults.files)
+  end
+  for _, key in ipairs({ "hidden", "ignored" }) do
+    if type(cfg.files[key]) ~= "boolean" then
+      table.insert(errors, ("invalid files.%s: %s"):format(key, vim.inspect(cfg.files[key])))
+      cfg.files[key] = false
+    end
   end
   if cfg.lsp.result_limit ~= false and not is_positive_integer(cfg.lsp.result_limit) then
     table.insert(errors, ("invalid lsp.result_limit: %s"):format(vim.inspect(cfg.lsp.result_limit)))

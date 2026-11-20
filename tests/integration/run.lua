@@ -700,6 +700,23 @@ local function config_session()
   tag = help_after("zzqqxx")
   check("an empty default view opens its help", tag == "controlk-default-view", tag)
 
+  say("== files: hidden")
+  vim.fn.writefile({}, FIX .. "/proj/.dotnote")
+  local fp, fb = open_picker(FIX .. "/proj/src/widget.h")
+  check(
+    "a skips hidden files by default",
+    not has_display(type_text(fp, fb, "a dotnote"), ".dotnote")
+  )
+  close(fb)
+  require("controlk").setup({ files = { hidden = true } })
+  fp, fb = open_picker(FIX .. "/proj/src/widget.h")
+  check("files.hidden lists them", has_display(type_text(fp, fb, "a dotnote"), ".dotnote"))
+  close(fb)
+  require("controlk").setup({
+    prefixes = { lsp_classes = "C", eval = false },
+    default_sources = { "files" },
+  })
+
   say("== checkhealth")
   vim.cmd("checkhealth controlk")
   local report = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
