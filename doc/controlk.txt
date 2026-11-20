@@ -16,8 +16,8 @@ CONTENTS                                                    *controlk-contents*
 1. INTRODUCTION                                                *controlk-intro*
 
 One picker for everything, selected by a prefix, in the style of Qt Creator's
-Locator (Ctrl+K). Type nothing for open buffers, project files and line jumps.
-Type a prefix and a space to switch to a source: symbols, CMake targets, help,
+Locator (Ctrl+K). Type nothing to browse the file system. Type a prefix and a
+space to switch to a source: project files, symbols, CMake targets, help,
 commands and more.
 
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`,
@@ -27,10 +27,11 @@ while `c` on its own searches the project. The longest matching prefix wins, so
 ==============================================================================
 2. REQUIREMENTS                                            *controlk-requirements*
 
-- Neovim 0.11 or newer is the stated requirement. Neovim 0.10.4, 0.11.7 and
-  0.12.6 have been tested by hand.
-- telescope.nvim. Tested with master, v0.2.2, v0.2.0 and v0.1.9.
-- plenary.nvim.
+- Neovim 0.10.4 or newer.
+- telescope.nvim and plenary.nvim.
+
+CI tests these pairs on every change: Neovim 0.10.4 with Telescope v0.1.9 and
+v0.2.0, 0.11.7 with v0.2.2, and 0.12.6 with Telescope master.
 
 Optional:
 - ripgrep, for faster file listing. Git is the fallback.
@@ -40,10 +41,10 @@ Optional:
 ==============================================================================
 3. SETUP                                                          *controlk-setup*
 
-With lazy.nvim, using the GitHub repository:
+With lazy.nvim:
 >lua
     {
-      url = "git@github.com:hebercosfer/telescope-controlk.nvim.git",
+      "hebercosfer/telescope-controlk.nvim",
       dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
       config = function()
         require("telescope").load_extension("controlk")
