@@ -1,0 +1,49 @@
+name: compat
+
+# Weekly drift check: the current Neovim (stable and nightly) against Telescope master. It
+# blocks nothing. A failure opens one `compat` issue, or comments on it if it is open.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test:
+    name: compat (nvim ${{ matrix.neovim }}, telescope master)
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim: [stable, nightly]
+    uses: ./.github/workflows/test.yml
+    with:
+      os: ubuntu-latest
+      neovim: ${{ matrix.neovim }}
+      telescope: master
+
+  report:
+    name: report
+    needs: test
+    if: failure()
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the compat issue
+        run: |
+          gh label create compat --repo "$GITHUB_REPOSITORY" --color d93f0b \
+            --description "Drift against Neovim nightly or Telescope master" --force
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --label compat --state open \
+            --json number --jq '.[0].number // empty')
+          body="The weekly compat run failed: $RUN"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label compat \
+              --title "Weekly compat run failed" --body "$body"
+          fi

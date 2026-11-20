@@ -1,0 +1,147 @@
+name: release
+
+# The release gate (RELEASING.md). Runs on a release candidate tag (vX.Y.Z-rc.N) and on the
+# final tag (vX.Y.Z), which must sit on a commit whose release candidate passed. A tag
+# dryrun-vX.Y.Z[-rc.N] runs every check but publishes nothing.
+
+on:
+  push:
+    tags: ["v*", "dryrun-v*"]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  meta:
+    name: version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      rc: ${{ steps.v.outputs.rc }}
+      dryrun: ${{ steps.v.outputs.dryrun }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        name: Check the tag against version.lua and CHANGELOG.md
+        run: |
+          tag="$GITHUB_REF_NAME"
+          dryrun=false
+          case "$tag" in dryrun-*) dryrun=true; tag="${tag#dryrun-}" ;; esac
+          if [[ ! "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-rc\.[0-9]+)?$ ]]; then
+            echo "::error::tag $GITHUB_REF_NAME is not vX.Y.Z or vX.Y.Z-rc.N"
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          rc=false
+          [ -n "${BASH_REMATCH[2]}" ] && rc=true
+          code=$(sed -n 's/.*version = "\(.*\)".*/\1/p' lua/controlk/version.lua)
+          if [ "$code" != "$version" ]; then
+            echo "::error::lua/controlk/version.lua says $code, the tag says $version"
+            exit 1
+          fi
+          if ! grep -q "^## \[$version\] - " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$version] - <date>' section"
+            exit 1
+          fi
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "rc=$rc"
+            echo "dryrun=$dryrun"
+          } >> "$GITHUB_OUTPUT"
+
+  # The gate and the checks run alongside the version check; only publish needs all three.
+  gate:
+    name: gate (${{ matrix.os }}, nvim ${{ matrix.pair.neovim }}, telescope ${{ matrix.pair.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # The same pairs as ci.yml.
+        pair:
+          - { neovim: v0.10.4, name: v0.2.0, ref: v0.2.0 }
+          - { neovim: v0.10.4, name: v0.1.9, ref: v0.1.9 }
+          - { neovim: v0.11.7, name: v0.2.2, ref: v0.2.2 }
+          - { neovim: v0.12.6, name: master, ref: 1e1bab730218eaf97fce743be3f56e51075928ac }
+    uses: ./.github/workflows/test.yml
+    with:
+      os: ${{ matrix.os }}
+      neovim: ${{ matrix.pair.neovim }}
+      telescope: ${{ matrix.pair.ref }}
+
+  checks:
+    name: lint and docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install stylua
+        uses: JohnnyMorganz/stylua-action@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: v2.6.0
+          args: --version
+      - name: Install luacheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+          sudo luarocks install luacheck
+      - name: Lint
+        run: make lint
+      - uses: rhysd/action-setup-vim@v1
+        env:
+          TMPDIR: ${{ runner.temp }}
+        with:
+          neovim: true
+          version: v0.12.6
+      # The help file must build its tags without an error (duplicate or malformed tags).
+      - name: Doc check
+        run: nvim --headless -u NONE -c "try | helptags doc | catch | cquit 1 | endtry" -c "qa"
+
+  publish:
+    name: publish
+    needs: [meta, gate, checks]
+    if: needs.meta.outputs.dryrun != 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.meta.outputs.tag }}
+      VERSION: ${{ needs.meta.outputs.version }}
+      RC: ${{ needs.meta.outputs.rc }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # A final tag publishes only a commit whose release candidate passed this gate.
+      - name: Require a green release candidate on this commit
+        if: needs.meta.outputs.rc != 'true'
+        run: |
+          candidates=$(git tag --points-at "$GITHUB_SHA" | grep -E "^v$VERSION-rc\.[0-9]+$" || true)
+          if [ -z "$candidates" ]; then
+            echo "::error::no v$VERSION-rc.N tag on $GITHUB_SHA"
+            exit 1
+          fi
+          for rc in $candidates; do
+            ok=$(gh run list --workflow release.yml --branch "$rc" --json conclusion \
+              --jq '[.[] | select(.conclusion == "success")] | length')
+            if [ "$ok" -gt 0 ]; then
+              echo "release candidate $rc passed"
+              exit 0
+            fi
+          done
+          echo "::error::no release candidate on $GITHUB_SHA passed the gate"
+          exit 1
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          cat notes.md
+      - name: Publish the GitHub release
+        run: |
+          flags=()
+          [ "$RC" = "true" ] && flags+=(--prerelease)
+          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md "${flags[@]}"
