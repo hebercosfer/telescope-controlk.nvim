@@ -275,8 +275,39 @@ local function lsp_and_cmake()
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   say("== default and prefixes (LSP origin: widget.h)")
   local rows = type_text(picker, prompt, "")
-  check("default shows open buffers", has_tag(rows, "buffer"))
-  check("default shows project files", has_tag(rows, "file"))
+  check("default browses the project root", only_tag(rows, "fs") and has_display(rows, "src/"))
+
+  -- Enter on a directory goes into it, through Telescope's real select action, and keeps the
+  -- prefix that was typed.
+  local function enter_dir(text, dir)
+    local found = type_text(picker, prompt, text)
+    for _ = 1, #found do
+      local entry = state.get_selected_entry()
+      if entry and entry.value.text == dir then
+        break
+      end
+      actions.move_selection_next(prompt)
+    end
+    actions.select_default(prompt)
+    settle(picker)
+    return vim.api.nvim_buf_get_lines(prompt, 0, 1, false)[1] or "", rows_of(picker)
+  end
+  local entered, inside = enter_dir("", "src/")
+  check(
+    "enter on a directory goes into it",
+    entered == picker.prompt_prefix .. "src/" and has_display(inside, "widget.h"),
+    vim.inspect(entered)
+  )
+  entered, inside = enter_dir("f ", "src/")
+  check(
+    "enter on a directory keeps the f prefix",
+    entered == picker.prompt_prefix .. "f src/" and has_display(inside, "widget.h"),
+    vim.inspect(entered)
+  )
+  rows = type_text(picker, prompt, "src/wid")
+  check("a typed path narrows inside it", has_display(rows, "widget.cpp") and #rows == 2)
+  rows = type_text(picker, prompt, "4")
+  check("default still jumps to a line number", has_display(rows, "Line 4"))
 
   rows = type_text(picker, prompt, "o ")
   check("o lists only buffers", only_tag(rows, "buffer") and #rows >= 1)
@@ -354,7 +385,7 @@ local function lsp_and_cmake()
     vim.deep_equal(first, { "c", "cm", "cmo", "ct" }),
     table.concat(first, ",")
   )
-  check("c still searches the default sources", has_tag(rows, "file") or has_tag(rows, "buffer"))
+  check("c still searches the default sources", has_tag(rows, "fs"))
 
   rows = type_text(picker, prompt, "cmx")
   check("cmx suggests nothing", not has_tag(rows, "cm") and not has_tag(rows, "cmo"))
@@ -401,7 +432,7 @@ local function lsp_and_cmake()
   local unnamed = vim.api.nvim_get_current_buf()
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   check("a wide screen shows the preview", picker.previewer ~= nil and picker.preview_win ~= nil)
-  for _, text in ipairs({ "? ", "t Telescope", "r widget", "o " }) do
+  for _, text in ipairs({ "? ", "t Telescope", "r widget", "o ", "" }) do
     type_text(picker, prompt, text)
     for _ = 1, 3 do
       local ok, err = pcall(actions.move_selection_next, prompt)

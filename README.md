@@ -40,11 +40,11 @@ vim.keymap.set("n", "<leader>fk", "<cmd>Telescope controlk<cr>", { desc = "Locat
 
 | Prefix | Source | Enter does | Needs |
 |---|---|---|---|
-| (none) | open buffers, project files, line jump | open | |
+| (none) | the file system, as `f`, and a line number, as `l` | open, or enter the directory | |
 | `o` | open buffers | open | |
 | `a` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
-| `f` | file system, prefix match on names | open | |
+| `f` | file system from the project root, prefix match on names | open, or enter the directory | |
 | `?` | the prefixes in this table, with what each one searches | puts the prefix in the prompt | |
 | `h` | Neovim help tags | open help | |
 | `t` | Ex commands | fills `:name ` for arguments | |
@@ -65,8 +65,16 @@ entry replaces `?` with that prefix and switches to its source, so `?` then Ente
 `c ` in the prompt, ready for a class name.
 
 A partly typed prefix suggests the prefixes it could become. `c` lists `c`, `cm`, `cmo` and `ct`
-first, then the buffers, files and lines that match `c`, so nothing is lost while you decide.
+first, then the entries of the project root that start with `c`, so nothing is lost while you
+decide.
 Enter on a suggestion works like Enter in the `?` list.
+
+With no prefix, the locator browses the file system like `f`: it opens on the project root (the
+git root of the current buffer), narrows by the start of each name, and Enter on a directory goes
+into it (`src/` becomes the prompt), while Enter on a file opens it. You can type a path too:
+`src/wid`, `~/notes/`, `/etc/`. A number jumps to that line, as `l` does. To search open buffers
+and every project file instead, as `o` and `a` do, set
+`default_sources = { "buffers", "files", "lines" }`.
 
 Prefixes must be followed by a space: `c Widget` searches classes for `Widget`, while `c` on its own
 searches the project. The longest matching prefix wins, so `cm` never triggers `c`.
@@ -151,8 +159,9 @@ require("telescope").setup({
         lsp_symbols = ":", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
         cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",
       },
-      -- Sources merged when no prefix is typed.
-      default_sources = { "buffers", "files", "lines" },
+      -- Sources merged when no prefix is typed. { "buffers", "files", "lines" } searches open
+      -- buffers and project files instead of browsing.
+      default_sources = { "filesystem", "lines" },
       -- Sources removed entirely.
       disabled = {},
       lsp = { min_query = 1 },
@@ -176,7 +185,7 @@ Examples:
 extensions = {
   controlk = {
     prefixes = { lsp_classes = "C", eval = false },   -- C for classes, no Lua prefix
-    default_sources = { "buffers", "files" },          -- drop the line jump from the default view
+    default_sources = { "buffers", "files" },          -- fuzzy-search buffers and files, no browsing
     disabled = { "web" },
     web = { engines = { Google = false, Neovim = "https://neovim.io/search/?q=%s" } },
   },
