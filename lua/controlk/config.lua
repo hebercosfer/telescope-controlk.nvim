@@ -72,6 +72,9 @@ M.defaults = {
   lsp = {
     -- workspace/symbol queries need at least this many characters.
     min_query = 1,
+    -- Servers cap how many symbols one reply holds. A reply of exactly this many was
+    -- probably cut, and the locator says so. 100 is clangd's default; false never warns.
+    result_limit = 100,
   },
   cmake = {
     -- Build directory, absolute or relative to the project root.
@@ -117,7 +120,7 @@ local OPTIONS = vim.tbl_keys(M.defaults)
 table.insert(OPTIONS, "layout_config")
 local FIXED_KEYS = {
   cutie = { "width", "height", "preview" },
-  lsp = { "min_query" },
+  lsp = { "min_query", "result_limit" },
   cmake = { "build_dir" },
   web = { "engines" },
 }
@@ -240,6 +243,10 @@ function M.resolve(user)
   if not is_positive_integer(cfg.cutie.height) then
     table.insert(errors, ("invalid cutie.height: %s"):format(vim.inspect(cfg.cutie.height)))
     cfg.cutie.height = CUTIE_HEIGHT
+  end
+  if cfg.lsp.result_limit ~= false and not is_positive_integer(cfg.lsp.result_limit) then
+    table.insert(errors, ("invalid lsp.result_limit: %s"):format(vim.inspect(cfg.lsp.result_limit)))
+    cfg.lsp.result_limit = M.defaults.lsp.result_limit
   end
   if cfg.keymap ~= false and (type(cfg.keymap) ~= "string" or cfg.keymap == "") then
     table.insert(errors, ("invalid keymap: %s"):format(vim.inspect(cfg.keymap)))
