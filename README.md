@@ -72,7 +72,7 @@ vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" }
 | `c` | workspace classes, structs, enums | jump | LSP |
 | `m` | workspace functions, methods, constructors | jump | LSP |
 | `.` | symbols in the current document | jump | LSP with `textDocument/documentSymbol` |
-| `r` | references to the symbol under the cursor | jump | LSP with `textDocument/references` |
+| `r` | references to a symbol, by name: `r Widget` (`ui::Widget` for one in a namespace) | jump | LSP with `workspace/symbol` and `textDocument/references` |
 | `cm` | CMake build targets | builds in a terminal | cmake |
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
