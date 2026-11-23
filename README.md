@@ -1,8 +1,8 @@
 # telescope-controlk.nvim
 
 One picker for everything, selected by a prefix, in the style of Qt Creator's Locator (Ctrl+K).
-Type nothing to browse the file system. Type a prefix and a space to switch to a source: project
-files, symbols, CMake targets, help, commands and more.
+It opens on the list of prefixes. Type a prefix and a space to switch to a source: project files,
+symbols, CMake targets, help, commands and more. Type anything else to browse the file system.
 
 ## Requirements
 
@@ -32,6 +32,9 @@ CI tests these pairs on every change:
 },
 {
   "hebercosfer/telescope-controlk.nvim",
+  -- The newest release. lazy.nvim skips release candidates here; to try one, pin it with
+  -- tag = "v0.1.0-rc.1" instead.
+  version = "*",
   dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
   config = function()
     require("telescope").load_extension("controlk")
@@ -44,19 +47,14 @@ set at that moment: set `mapleader` before your plugin manager loads plugins, as
 configurations already do. Choose another key with `keymap` in the configuration below, or set
 `keymap = false` to map nothing. A key you have mapped yourself is never taken over.
 
-Qt Creator's own key, Ctrl+K, is not the default because most Neovim configurations use it to move
-between splits. If yours does not, `keymap = "<C-k>"` gives you the Qt Creator key. You can also
-map it yourself:
-
-```lua
-vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
-```
+Qt Creator uses Ctrl+K, but in Neovim Ctrl+H/J/K/L move between splits, so the locator takes
+`<leader>k`.
 
 ## Sources and prefixes
 
 | Prefix | Source | Enter does | Needs |
 |---|---|---|---|
-| (none) | the file system, as `f`, and a line number, as `l` | open, or enter the directory | |
+| (none) | empty: the prefixes; text that starts no prefix: the file system, as `f`, and a line number, as `l` | puts the prefix in the prompt; open, or enter the directory | |
 | `b` | open buffers | open | |
 | `p` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
@@ -293,6 +291,92 @@ SESSION=config nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/n
 
 The harness works in a temporary copy of `tests/integration/fixtures`, so build output and clangd's
 cache never land in the repository.
+
+## Appendix: ripgrep and a multigrep source
+
+### Installing ripgrep
+
+`p` lists the project's files with ripgrep (`rg`) when it is installed, and with `git ls-files`
+otherwise. ripgrep is faster, and the multigrep source below needs it.
+
+| System | Command |
+|---|---|
+| Debian, Ubuntu | `sudo apt install ripgrep` |
+| Fedora | `sudo dnf install ripgrep` |
+| Arch | `sudo pacman -S ripgrep` |
+| macOS | `brew install ripgrep` |
+| Windows | `winget install BurntSushi.ripgrep.MSVC`, or `choco install ripgrep`, or `scoop install ripgrep` |
+
+`rg --version` shows that it is on your `PATH`, and `:checkhealth controlk` reports it too.
+
+### A multigrep source
+
+A live grep as a source of your own (see `:h controlk-custom-sources`): `g pattern  *.lua` searches
+for `pattern` in the files that match `*.lua`. Two spaces separate the pattern from the glob, and
+the glob is optional. It searches from the project root, and Enter opens the match.
+
+```lua
+-- The rg run for the previous keystroke, killed when a newer query starts.
+local running
+
+require("telescope").setup({
+  extensions = {
+    controlk = {
+      sources = {
+        multigrep = {
+          prefix = "g",
+          title = "Multi grep",
+          tag = "grep",
+          -- `g pattern  *.lua`: a pattern, two spaces, then a glob for the files to search.
+          items = function(query, ctx, done)
+            if running then
+              running:kill("sigterm")
+              running = nil
+            end
+            local pattern, glob = unpack(vim.split(query, "  ", { plain = true }))
+            if pattern == "" then
+              return done({})
+            end
+            local cmd = { "rg", "--vimgrep", "--smart-case", "-e", pattern }
+            if glob and glob ~= "" then
+              vim.list_extend(cmd, { "-g", glob })
+            end
+            local handle
+            handle = vim.system(cmd, { cwd = ctx.root, text = true }, function(result)
+              local list = {}
+              -- A killed run belongs to an older query: its rows are not wanted.
+              if result.signal == 0 then
+                for line in (result.stdout or ""):gmatch("[^\n]+") do
+                  local file, lnum, col, text = line:match("^(.-):(%d+):(%d+):(.*)$")
+                  if file then
+                    table.insert(list, {
+                      text = vim.trim(text),
+                      detail = file .. ":" .. lnum,
+                      path = vim.fs.joinpath(ctx.root, file),
+                      lnum = tonumber(lnum),
+                      col = tonumber(col),
+                      -- rg already filtered them; fuzzy matching must keep every row.
+                      passthrough = true,
+                    })
+                  end
+                end
+              end
+              -- vim.system calls back in a fast event; done must run on the main loop.
+              vim.schedule(function()
+                if running == handle then
+                  running = nil
+                end
+                done(list)
+              end)
+            end)
+            running = handle
+          end,
+        },
+      },
+    },
+  },
+})
+```
 
 ## License
 
