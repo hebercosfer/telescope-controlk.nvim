@@ -36,18 +36,27 @@ local function say(...)
   io.stdout:flush()
 end
 
--- Wipes the terminal buffers the CMake and shell checks opened, once their jobs have exited.
--- A buffer whose job still runs is left alone: on Windows, Neovim 0.10 and 0.11 can crash when
--- a terminal buffer is deleted while its job (cmd.exe) is running.
+-- Terminal buffers whose terminal Neovim has closed (TermClose fired).
+local term_closed = {}
+vim.api.nvim_create_autocmd("TermClose", {
+  callback = function(args)
+    term_closed[args.buf] = true
+  end,
+})
+
+-- Wipes the terminal buffers the CMake and shell checks opened, once Neovim has closed their
+-- terminals. On Windows, deleting a terminal buffer earlier can kill Neovim: the job may have
+-- exited while its output is still being read, which jobwait() does not wait for. A buffer
+-- whose terminal stays open is left alone.
 local function wipe_terminals()
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
-      local job = vim.b[buf].terminal_job_id
-      local exited = not job or vim.fn.jobwait({ job }, 10000)[1] ~= -1
-      if exited then
+      if vim.wait(10000, function()
+        return term_closed[buf] == true
+      end, 50) then
         pcall(vim.api.nvim_buf_delete, buf, { force = true })
       else
-        say("  terminal job still running, buffer kept: " .. vim.api.nvim_buf_get_name(buf))
+        say("  terminal still open, buffer kept: " .. vim.api.nvim_buf_get_name(buf))
       end
     end
   end
