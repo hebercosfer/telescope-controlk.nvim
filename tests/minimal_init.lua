@@ -6,5 +6,11 @@ vim.opt.rtp:append(root)
 vim.cmd.helptags(root .. "/doc")
 
 local plenary = os.getenv("PLENARY_DIR") or vim.fn.expand("~/.local/share/nvim/lazy/plenary.nvim")
+-- Without plenary, PlenaryBustedDirectory is an unknown command and headless Neovim waits at
+-- the error forever. Fail at once instead.
+if vim.fn.isdirectory(plenary) == 0 then
+  io.stderr:write("minimal_init: plenary.nvim not found at " .. plenary .. " (set PLENARY_DIR)\n")
+  vim.cmd("cquit 1")
+end
 vim.opt.rtp:append(plenary)
 vim.cmd("runtime plugin/plenary.vim")

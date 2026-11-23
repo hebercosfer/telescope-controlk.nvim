@@ -22,11 +22,24 @@ jobs:
   run:
     name: ${{ inputs.os }}
     runs-on: ${{ inputs.os }}
+    # A headless Neovim that stops on an error waits for input forever; GitHub's own limit is 6h.
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+
+      # Forward slashes on every OS. On Windows github.workspace is D:\a\..., and the shell
+      # (and Vim's :set) read those backslashes as escapes.
+      - name: Set the plugin paths
+        run: |
+          ws="${GITHUB_WORKSPACE//\\//}"
+          {
+            echo "PLENARY_DIR=$ws/.tests/plenary.nvim"
+            echo "TELESCOPE_DIR=$ws/.tests/telescope.nvim"
+            echo "FZF_DIR=$ws/.tests/telescope-fzf-native.nvim"
+          } >> "$GITHUB_ENV"
 
       # Pinned, so that a change upstream cannot turn this repository red on its own.
       - name: Check out plenary.nvim
@@ -98,13 +111,7 @@ jobs:
           rg --version | head -1
 
       - name: Unit tests
-        env:
-          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
         run: make test
 
       - name: Integration tests
-        env:
-          PLENARY_DIR: ${{ github.workspace }}/.tests/plenary.nvim
-          TELESCOPE_DIR: ${{ github.workspace }}/.tests/telescope.nvim
-          FZF_DIR: ${{ github.workspace }}/.tests/telescope-fzf-native.nvim
         run: make test-integration
