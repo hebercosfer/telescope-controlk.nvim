@@ -118,20 +118,45 @@ function M.find_root(dir)
   return roots[1]
 end
 
+-- The names of the directories in `dir` (symbolic links to directories included).
+local function subdirs(dir)
+  local names = {}
+  local handle = vim.uv.fs_scandir(dir)
+  while handle do
+    local name, kind = vim.uv.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    if kind == "link" then
+      local stat = vim.uv.fs_stat(dir .. "/" .. name)
+      kind = stat and stat.type
+    end
+    if kind == "directory" then
+      table.insert(names, name)
+    end
+  end
+  return names
+end
+
 ---@param root string
 ---@return string[] directories holding a CMakeCache.txt, sorted
 function M.build_dirs(root)
-  local seen, found = {}, {}
-  for _, pattern in ipairs({
-    "build*/CMakeCache.txt",
-    "build/*/CMakeCache.txt",
-    "cmake-build-*/CMakeCache.txt",
-  }) do
-    for _, cache in ipairs(vim.fn.glob(root .. "/" .. pattern, false, true)) do
-      local dir = vim.fs.dirname(cache)
-      if not seen[dir] then
-        seen[dir] = true
-        table.insert(found, dir)
+  -- Listed with fs_scandir, not glob(): on Windows, with Neovim 0.10 and 0.11, glob() finds
+  -- nothing under a root such as C:\Users\RUNNER~1\... (backslashes, an 8.3 name).
+  local found = {}
+  local function add(dir)
+    if vim.uv.fs_stat(dir .. "/CMakeCache.txt") then
+      table.insert(found, dir)
+    end
+  end
+  for _, name in ipairs(subdirs(root)) do
+    -- build*, build/*, cmake-build-*
+    if name:find("^build") or name:find("^cmake%-build%-") then
+      add(root .. "/" .. name)
+    end
+    if name == "build" then
+      for _, sub in ipairs(subdirs(root .. "/build")) do
+        add(root .. "/build/" .. sub)
       end
     end
   end

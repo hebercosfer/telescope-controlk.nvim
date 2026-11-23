@@ -75,6 +75,7 @@ describe("cmdline.run", function()
 
   it("notifies a Lua error without the stack traceback", function()
     cmdline.run('lua error("boom")')
-    assert.are.equal("E5108: Lua: boom", notified[1].msg)
+    -- Neovim 0.12 says "E5108: Lua: boom", 0.10 and 0.11 "E5108: Error executing lua boom".
+    assert.matches("^E5108: [^\n]*boom$", notified[1].msg)
   end)
 end)

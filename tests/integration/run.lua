@@ -690,7 +690,7 @@ local function lsp_and_cmake()
   check(
     "lua notifies an error",
     #notes == 1
-      and notes[1].message == "E5108: Lua: boom"
+      and notes[1].message:find("^E5108: [^\n]*boom$") ~= nil
       and notes[1].level == vim.log.levels.ERROR,
     vim.inspect(notes)
   )

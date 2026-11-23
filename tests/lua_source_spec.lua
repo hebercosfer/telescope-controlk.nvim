@@ -45,7 +45,8 @@ describe("lua source", function()
     local row = list("x = = 1")[1]
     row.run(row)
     assert.are.equal(vim.log.levels.ERROR, notified[1].level)
-    assert.matches("^E5107: Lua: unexpected symbol", notified[1].msg)
+    -- The wording before the message differs by Neovim version.
+    assert.matches("^E5107: [^\n]*unexpected symbol", notified[1].msg)
   end)
 
   it("completes Lua names below the run row", function()

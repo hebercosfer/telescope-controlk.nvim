@@ -41,7 +41,8 @@ describe("filesystem source", function()
   it("narrows by the start of the name, ignoring case", function()
     local items = list("re")
     assert.are.equal(1, #items)
-    assert.are.equal(root .. "/README.md", items[1].path)
+    -- The source normalizes paths: forward slashes on Windows too.
+    assert.are.equal(vim.fs.normalize(root .. "/README.md"), items[1].path)
   end)
 
   it("gives a directory the query that enters it, keeping what was typed", function()
