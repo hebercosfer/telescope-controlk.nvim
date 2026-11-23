@@ -48,15 +48,20 @@ vim.api.nvim_create_autocmd("TermClose", {
 -- terminals. On Windows, deleting a terminal buffer earlier can kill Neovim: the job may have
 -- exited while its output is still being read, which jobwait() does not wait for. A buffer
 -- whose terminal stays open is left alone.
+-- Each step is logged: if Neovim dies here, the log shows which buffer and which step.
 local function wipe_terminals()
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+      local name = vim.api.nvim_buf_get_name(buf)
+      say(("  terminal %d: waiting for TermClose  %s"):format(buf, name))
       if vim.wait(10000, function()
         return term_closed[buf] == true
       end, 50) then
+        say(("  terminal %d: closed, deleting"):format(buf))
         pcall(vim.api.nvim_buf_delete, buf, { force = true })
+        say(("  terminal %d: deleted"):format(buf))
       else
-        say("  terminal still open, buffer kept: " .. vim.api.nvim_buf_get_name(buf))
+        say(("  terminal %d: still open, buffer kept"):format(buf))
       end
     end
   end
