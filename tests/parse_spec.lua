@@ -56,19 +56,19 @@ describe("parse", function()
   end)
 
   it("reads ? alone as the prefix list", function()
-    local m = { ["?"] = "prefixes", c = "lsp_classes" }
-    assert.are.same({ "prefixes", "", "?" }, { parse.parse("?", m) })
-    assert.are.same({ "prefixes", "W", "?" }, { parse.parse("? W", m) })
+    local m = { ["?"] = "help", c = "lsp_classes" }
+    assert.are.same({ "help", "", "?" }, { parse.parse("?", m) })
+    assert.are.same({ "help", "W", "?" }, { parse.parse("? W", m) })
   end)
 
   it("does not read ? alone as the list when ? belongs to another source", function()
-    assert.are.same({ nil, "?", nil }, { parse.parse("?", map) })
+    assert.are.same({ nil, "?", nil }, { parse.parse("?", { ["?"] = "lsp_classes" }) })
   end)
 
   it("follows a renamed prefix list", function()
-    local m = { ["??"] = "prefixes" }
+    local m = { ["??"] = "help" }
     assert.are.same({ nil, "?", nil }, { parse.parse("?", m) })
-    assert.are.same({ "prefixes", "", "??" }, { parse.parse("??", m) })
+    assert.are.same({ "help", "", "??" }, { parse.parse("??", m) })
   end)
 
   it("handles an empty prompt", function()

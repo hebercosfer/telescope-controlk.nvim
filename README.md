@@ -61,8 +61,7 @@ vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" }
 | `p` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
 | `f` | file system from the project root, prefix match on names | open, or enter the directory | |
-| `?` | the prefixes in this table, with what each one searches | puts the prefix in the prompt | |
-| `h` | Neovim help tags | open help | |
+| `?` | alone, the prefixes in this table; with text, Neovim help tags | puts the prefix in the prompt, or opens the help | |
 | `:` | Ex commands; the first row runs what you typed (`: w`, `: 42`), and after a space the list completes the arguments as `<Tab>` does | runs it (output and errors as notifications), or fills the prompt | |
 | `'` | marks | jump | |
 | `=` | Lua expression | copies the result | |
@@ -78,16 +77,17 @@ vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" }
 | `cmo` | CMake target definitions | jump | cmake |
 | `ct` | CTest tests | runs in a terminal | cmake, ctest |
 
-Type `?` when you do not remember a prefix: the list shows at once, without a space. Enter on an
-entry replaces `?` with that prefix and switches to its source, so `?` then Enter on `c` leaves
-`c ` in the prompt, ready for a class name.
+The locator opens on the list of prefixes, and shows only prefixes until you type a space. A
+partly typed prefix narrows the list: `c` lists `c`, `cm`, `cmo` and `ct`. Enter on one replaces
+the prompt with that prefix and a space and switches to its source, so Enter on `c` leaves `c ` in
+the prompt, ready for a class name. Text that can become no prefix (`con`, `src/`, `42`) searches
+the default view below.
 
-A partly typed prefix suggests the prefixes it could become. `c` lists `c`, `cm`, `cmo` and `ct`
-first, then the entries of the project root that start with `c`, so nothing is lost while you
-decide.
-Enter on a suggestion works like Enter in the `?` list.
+`?` alone shows the same list. `? text` searches the help: first what `:help text` would offer, in
+Neovim's own order, then every other tag, fuzzy matched, so `? bufgetlines` still finds
+`nvim_buf_get_lines()`.
 
-With no prefix, the locator browses the file system like `f`: it opens on the project root (the
+With text and no prefix, the locator browses the file system like `f`: it opens on the project root (the
 git root of the current buffer), narrows by the start of each name, and Enter on a directory goes
 into it (`src/` becomes the prompt), while Enter on a file opens it. You can type a path too:
 `src/wid`, `~/notes/`, `/etc/`. A number jumps to that line, as `l` does. To search open buffers
@@ -166,9 +166,8 @@ the Telescope styles. For one call, `:Telescope controlk style=ivy`. Telescope's
 ### Cutie
 
 `style = "cutie"` looks like Qt Creator's locator: a small prompt in the bottom-left corner, right
-above the status line, and nothing else until you type. The first character opens the list above
-the prompt and the preview to its right; clearing the prompt hides them again. The best match is
-the row right above the prompt.
+above the status line, with the list above it and the preview to its right. An empty prompt
+lists the prefixes. The best match is the row right above the prompt.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -215,8 +214,7 @@ require("telescope").setup({
       cutie = { width = 60, height = 15, preview = true },
       -- Prefix per source. false removes the prefix.
       prefixes = {
-        buffers = "b", files = "p", lines = "l", filesystem = "f", help = "h",
-        prefixes = "?",
+        buffers = "b", files = "p", lines = "l", filesystem = "f", help = "?",
         commands = ":", marks = "'", eval = "=", lua = "lua", shell = "!", web = "w",
         lsp_symbols = "s", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
         lsp_references = "r",
