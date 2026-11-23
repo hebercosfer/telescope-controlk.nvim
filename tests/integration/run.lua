@@ -30,8 +30,20 @@ if os.getenv("FZF") == "1" then
 end
 
 local passed, failed = 0, 0
+-- Flushed at once: if Neovim dies, the last line shows how far it got.
 local function say(...)
   io.stdout:write(table.concat(vim.tbl_map(tostring, { ... }), " ") .. "\n")
+  io.stdout:flush()
+end
+
+-- Wipes the terminal buffers the CMake and shell checks opened, ending their jobs, so no
+-- shell keeps running (cmd.exe on Windows) through the checks that follow.
+local function wipe_terminals()
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    end
+  end
 end
 local function check(name, cond, detail)
   if cond then
@@ -579,6 +591,7 @@ local function lsp_and_cmake()
     shell_row.run(shell_row)
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
+  wipe_terminals()
 
   say("== Enter acts (:, ', w, !, =, r)")
   -- Opens the locator, types text, selects the first row with `tag` and presses Enter through
@@ -723,13 +736,15 @@ local function lsp_and_cmake()
   enter_on(origin, "' Q", "mark")
   check(
     "b jumps to the mark",
-    vim.api.nvim_buf_get_name(0) == FIX .. "/proj/src/main.cpp"
+    -- Normalized: on Windows the buffer name has backslashes, FIX forward slashes.
+    vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == FIX .. "/proj/src/main.cpp"
       and vim.api.nvim_win_get_cursor(0)[1] == 2,
     vim.api.nvim_buf_get_name(0) .. ":" .. vim.api.nvim_win_get_cursor(0)[1]
   )
 
   enter_on(origin, "! echo controlk-enter", "shell")
   check("! through Enter opens a terminal", vim.bo.buftype == "terminal", vim.bo.buftype)
+  wipe_terminals()
 
   cutie_checks()
 end
