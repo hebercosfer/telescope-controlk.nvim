@@ -278,16 +278,19 @@ describe("util.collect", function()
 end)
 
 describe("util.act", function()
-  local home_before = vim.env.HOME
+  -- The home directory comes from HOME, and on Windows from USERPROFILE.
+  local home_before, profile_before = vim.env.HOME, vim.env.USERPROFILE
   local home
   before_each(function()
     home = vim.fn.tempname()
     vim.fn.mkdir(home, "p")
     vim.env.HOME = home
+    vim.env.USERPROFILE = home
     vim.fn.writefile({ "one", "two", "three" }, home .. "/notes.txt")
   end)
   after_each(function()
     vim.env.HOME = home_before
+    vim.env.USERPROFILE = profile_before
     vim.fn.delete(home, "rf")
   end)
 
