@@ -14,7 +14,9 @@ return {
         detail = ctx.root,
         passthrough = true,
         run = function()
-          util.terminal({ vim.o.shell, "-c", query }, ctx.root)
+          -- A string: the terminal runs it with 'shell' and 'shellcmdflag' (cmd.exe /s /c on
+          -- Windows, where "-c" opened an interactive prompt and never ran the command).
+          util.terminal(query, ctx.root)
         end,
       },
     })

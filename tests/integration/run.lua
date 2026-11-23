@@ -36,12 +36,19 @@ local function say(...)
   io.stdout:flush()
 end
 
--- Wipes the terminal buffers the CMake and shell checks opened, ending their jobs, so no
--- shell keeps running (cmd.exe on Windows) through the checks that follow.
+-- Wipes the terminal buffers the CMake and shell checks opened, once their jobs have exited.
+-- A buffer whose job still runs is left alone: on Windows, Neovim 0.10 and 0.11 can crash when
+-- a terminal buffer is deleted while its job (cmd.exe) is running.
 local function wipe_terminals()
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
-      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      local job = vim.b[buf].terminal_job_id
+      local exited = not job or vim.fn.jobwait({ job }, 10000)[1] ~= -1
+      if exited then
+        pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      else
+        say("  terminal job still running, buffer kept: " .. vim.api.nvim_buf_get_name(buf))
+      end
     end
   end
 end
