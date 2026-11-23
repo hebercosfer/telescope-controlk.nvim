@@ -659,6 +659,65 @@ local function lsp_and_cmake()
   enter_on(origin, ": let g:controlk_ran = 7", "cmd")
   check(": runs what was typed from its first row", vim.g.controlk_ran == 7, vim.g.controlk_ran)
 
+  -- T18, T19: completion rows fill the prompt; what runs is notified.
+  local notify_before = vim.notify
+  local notes = {}
+  vim.notify = function(message, level)
+    table.insert(notes, { message = message, level = level })
+  end
+  local function prompt_after(text, tag, row_text)
+    local p, b = open_picker(origin)
+    local found = type_text(p, b, text)
+    for _ = 1, #found do
+      local entry = state.get_selected_entry()
+      if entry and entry.value.tag == tag and entry.value.text == row_text then
+        break
+      end
+      actions.move_selection_next(b)
+    end
+    actions.select_default(b)
+    local line = vim.api.nvim_buf_get_lines(b, 0, 1, false)[1] or ""
+    close(b)
+    return line:sub(#p.prompt_prefix + 1), found
+  end
+  local line, found = prompt_after(": set tabst", "cmd", "tabstop")
+  check(": set tabst offers tabstop", has_display(found, "tabstop"))
+  check("Enter on it completes the prompt", line == ": set tabstop", line)
+
+  enter_on(origin, ": echo 6 * 7", "cmd")
+  check(
+    ": notifies the output of what it runs",
+    notes[#notes] and notes[#notes].message == "42",
+    vim.inspect(notes[#notes])
+  )
+
+  line, found = prompt_after("lua vim.api.nvim_buf_get_l", "lua", "nvim_buf_get_lines")
+  check("lua completes Lua names", has_display(found, "nvim_buf_get_lines"))
+  check("Enter on one completes the prompt", line == "lua vim.api.nvim_buf_get_lines", line)
+
+  vim.g.controlk_t = nil
+  enter_on(origin, "lua vim.g.controlk_t = 1", "lua")
+  check("lua runs a statement", vim.g.controlk_t == 1, vim.g.controlk_t)
+
+  notes = {}
+  enter_on(origin, "lua print(6 * 7)", "lua")
+  check(
+    "lua notifies what print writes",
+    #notes == 1 and notes[1].message == "42" and notes[1].level == vim.log.levels.INFO,
+    vim.inspect(notes)
+  )
+
+  notes = {}
+  enter_on(origin, "lua error('boom')", "lua")
+  check(
+    "lua notifies an error",
+    #notes == 1
+      and notes[1].message:find("^E5108: [^\n]*boom$") ~= nil
+      and notes[1].level == vim.log.levels.ERROR,
+    vim.inspect(notes)
+  )
+  vim.notify = notify_before
+
   vim.cmd.edit(origin)
   vim.fn.cursor(1, 1)
   -- T21: references by name. The cursor stays on line 1, on no symbol: it plays no part.

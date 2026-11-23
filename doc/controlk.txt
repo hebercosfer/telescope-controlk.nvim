@@ -156,7 +156,12 @@ Ex commands (`:`)                                  *controlk-source-commands*
     Every Ex command, with the definition of user commands. Enter puts
     `:name ` on the command line, ready for arguments. The first row runs
     what you typed as a command, in the window you came from: `: w`,
-    `: 42`, `: s/old/new/g`. An error is shown, not raised.
+    `: 42`, `: s/old/new/g`. Its output and its errors are shown with
+    |vim.notify()|, not in the message area.
+    Once a command and a space are typed, the list holds what <Tab> would
+    offer for its arguments instead of command names: `: set tabst` lists
+    `tabstop`, `: e lua/` lists files, `: Telescope li` lists pickers. Enter
+    on one puts the completed line in the prompt, so you can keep typing.
 
 Marks (`'`)                                           *controlk-source-marks*
     Global marks and the marks of the current buffer. Enter jumps to the mark.
@@ -164,6 +169,13 @@ Marks (`'`)                                           *controlk-source-marks*
 Lua expression (`=`)                                   *controlk-source-eval*
     `= 2*21` evaluates the expression as Lua and shows the result, or the
     error. Enter copies the result to the unnamed register.
+
+Run Lua (`lua`)                                         *controlk-source-lua*
+    `lua vim.o.number = true` runs the chunk, as |:lua| does, in the window
+    you came from. What it prints, and any error, is shown with
+    |vim.notify()|. The rows below the first are what <Tab> offers for
+    `:lua`: `lua vim.api.nvim_buf_get_l` lists `nvim_buf_get_lines`, and
+    Enter on one puts it in the prompt. Use `=` to see a value instead.
 
 Shell command (`!`)                                   *controlk-source-shell*
     `! make test` runs the command with 'shell' in a terminal split at the
@@ -402,7 +414,7 @@ Every option is optional. These are the defaults, set through `telescope.setup`:
           prefixes = {
             buffers = "b", files = "p", lines = "l", filesystem = "f", help = "h",
             prefixes = "?",
-            commands = ":", marks = "'", eval = "=", shell = "!", web = "w",
+            commands = ":", marks = "'", eval = "=", lua = "lua", shell = "!", web = "w",
             lsp_symbols = "s", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
             lsp_references = "r",
             cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",

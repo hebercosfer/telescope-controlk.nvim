@@ -12,6 +12,7 @@ local modules = {
   "commands",
   "marks",
   "eval",
+  "lua",
   "shell",
   "web",
   "lsp",

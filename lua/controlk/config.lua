@@ -52,6 +52,8 @@ M.defaults = {
     commands = ":",
     marks = "'",
     eval = "=",
+    -- Runs Lua, with the completion of `:lua`. `=` shows a value instead.
+    lua = "lua",
     shell = "!",
     web = "w",
     lsp_symbols = "s",

@@ -14,6 +14,8 @@ The repository is github.com/hebercosfer/telescope-controlk.nvim. Open work is i
   `on_input_filter_cb`, sorter pass-through, select action).
 - `lua/controlk/util.lua`: `await` (plenary oneshot), `memo`, `hint`, `terminal`, `act`, `tag_items`.
 - `lua/controlk/cmake.lua`: CMake File API model reader, configure, CTest JSON parsing.
+- `lua/controlk/cmdline.lua`: command-line completion (`getcompletion`) and running a command line
+  with its output and errors notified; shared by `:` and `lua`.
 - `lua/controlk/cutie.lua`: geometry of the cutie style, pure Lua (`picker.lua` applies it).
 - `lua/controlk/sources/*.lua`: one module per source. `sources/init.lua` is the registry.
 - `tests/`: unit tests (plenary busted). `tests/integration/run.lua`: picker harness and fixtures.
@@ -51,7 +53,7 @@ Integration harness (needs clangd, cmake with Ninja, ctest; see the header of `t
     SESSION=lsp    nvim --headless -u NONE --cmd "set rtp+=$PWD,$HOME/.local/share/nvim/lazy/telescope.nvim,$HOME/.local/share/nvim/lazy/plenary.nvim" -c "luafile tests/integration/run.lua"
     SESSION=config (same command)
 
-Both must pass before a commit. The last recorded results: unit 145/145; LSP+CMake 65/65;
+Both must pass before a commit. The last recorded results: unit 162/162; LSP+CMake 73/73;
 config 29/29; 0 deprecations. `make test` and `make test-integration` run the same suites; the second also runs
 the deprecation check. Run single specs through the directory runner: `PlenaryBustedFile` ignores
 `tests/minimal_init.lua` and loads the user's own config, so the deprecation hook is missing there.

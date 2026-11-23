@@ -35,3 +35,37 @@ describe("commands source", function()
     assert.matches("E492", seen)
   end)
 end)
+
+describe("commands source with arguments", function()
+  local function list_with(query)
+    local items
+    commands.items(query, {
+      cache = {},
+      origin_win = vim.api.nvim_get_current_win(),
+      config = { prefix_map = { [":"] = "commands" } },
+    }, function(r)
+      items = r
+    end)
+    return items
+  end
+
+  it("completes the arguments as <Tab> would, after the run row", function()
+    local items = list_with("set tabst")
+    assert.are.equal(":set tabst", items[1].text)
+    assert.are.equal("tabstop", items[2].text)
+    assert.are.equal(": set tabstop", items[2].prompt)
+    assert.are.equal(2, #items)
+  end)
+
+  it("notifies the output of the command it runs", function()
+    local seen
+    local real = vim.notify
+    vim.notify = function(message)
+      seen = message
+    end
+    local row = list_with("echo 6 * 7")[1]
+    row.run(row)
+    vim.notify = real
+    assert.are.equal("42", seen)
+  end)
+end)
