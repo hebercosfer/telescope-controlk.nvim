@@ -15,7 +15,7 @@ DEPRECATION_ALLOW ?= tests/deprecations-allow.txt
 
 # Unit specs. Telescope is not on the runtimepath here.
 test:
-	PLENARY_DIR=$(PLENARY_DIR) $(NVIM_BIN) --headless -u tests/minimal_init.lua \
+	PLENARY_DIR='$(PLENARY_DIR)' $(NVIM_BIN) --headless -u tests/minimal_init.lua \
 		-c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua', sequential = true }"
 
 # The integration harness drives the real picker in two sessions. It also loads
@@ -27,7 +27,7 @@ test-integration:
 	mkdir -p $(dir $(DEPRECATION_REPORT))
 	rm -f $(DEPRECATION_REPORT)
 	for session in lsp config; do \
-		DEPRECATION_REPORT=$(DEPRECATION_REPORT) SESSION=$$session FZF=1 \
+		DEPRECATION_REPORT='$(DEPRECATION_REPORT)' SESSION=$$session FZF=1 \
 			$(NVIM_BIN) --headless -u NONE \
 			--cmd "set rtp+=$(CURDIR),$(TELESCOPE_DIR),$(PLENARY_DIR),$(FZF_DIR)" \
 			-c "luafile tests/integration/run.lua" -c "cquit 2" || exit 1; \
@@ -36,7 +36,7 @@ test-integration:
 
 # Fails on any reported deprecation that the allow-list does not name.
 check-deprecations:
-	DEPRECATION_REPORT=$(DEPRECATION_REPORT) DEPRECATION_ALLOW=$(DEPRECATION_ALLOW) \
+	DEPRECATION_REPORT='$(DEPRECATION_REPORT)' DEPRECATION_ALLOW='$(DEPRECATION_ALLOW)' \
 		$(NVIM_BIN) -l tests/check_deprecations.lua
 
 lint:
