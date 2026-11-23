@@ -1,7 +1,8 @@
+local cmdline = require("controlk.cmdline")
 local util = require("controlk.util")
 
 --- The row that runs what was typed as an Ex command: `: w`, `: 42`, `: s/a/b/g`. It ranks
---- before the command list, as `!` runs a shell command.
+--- before the other rows, as `!` runs a shell command. Its output and errors are notified.
 local function run_row(query, ctx)
   return {
     text = ":" .. query,
@@ -9,13 +10,7 @@ local function run_row(query, ctx)
     pinned = true,
     passthrough = true,
     run = function()
-      local ok, err = pcall(vim.api.nvim_win_call, ctx.origin_win, function()
-        vim.cmd(query)
-      end)
-      if not ok then
-        local message = tostring(err):gsub("^.-:%d+: ", "")
-        vim.notify(message, vim.log.levels.ERROR)
-      end
+      cmdline.run(query, ctx.origin_win)
     end,
   }
 end
@@ -25,6 +20,19 @@ return {
   title = "Ex commands",
   tag = "cmd",
   items = function(query, ctx, done)
+    -- With a command and a space, list what <Tab> offers for its arguments (files, options,
+    -- a plugin's subcommands) instead of command names.
+    if query:find("%S%s") then
+      local prefix = cmdline.prefix_of(ctx, "commands", ":")
+      local list = { run_row(query, ctx) }
+      vim.list_extend(
+        list,
+        cmdline.completions(query, function(line)
+          return prefix .. " " .. line
+        end)
+      )
+      return done(list)
+    end
     util.memo(ctx, "commands", function(finish)
       local user = vim.api.nvim_get_commands({})
       local items = {}

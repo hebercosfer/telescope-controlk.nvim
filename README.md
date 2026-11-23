@@ -63,9 +63,10 @@ vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" }
 | `f` | file system from the project root, prefix match on names | open, or enter the directory | |
 | `?` | the prefixes in this table, with what each one searches | puts the prefix in the prompt | |
 | `h` | Neovim help tags | open help | |
-| `:` | Ex commands; the first row runs what you typed (`: w`, `: 42`) | runs it, or fills `:name ` | |
+| `:` | Ex commands; the first row runs what you typed (`: w`, `: 42`), and after a space the list completes the arguments as `<Tab>` does | runs it (output and errors as notifications), or fills the prompt | |
 | `'` | marks | jump | |
 | `=` | Lua expression | copies the result | |
+| `lua` | runs Lua, as `:lua`; the list completes it as `<Tab>` does | runs it (output and errors as notifications), or fills the prompt | |
 | `!` | shell command | runs in a terminal | |
 | `w` | web search engines | opens the URL | |
 | `s` | workspace symbols | jump | LSP with `workspace/symbol` |
@@ -216,7 +217,7 @@ require("telescope").setup({
       prefixes = {
         buffers = "b", files = "p", lines = "l", filesystem = "f", help = "h",
         prefixes = "?",
-        commands = ":", marks = "'", eval = "=", shell = "!", web = "w",
+        commands = ":", marks = "'", eval = "=", lua = "lua", shell = "!", web = "w",
         lsp_symbols = "s", lsp_classes = "c", lsp_functions = "m", lsp_document = ".",
         lsp_references = "r",
         cmake_targets = "cm", cmake_open = "cmo", cmake_tests = "ct",

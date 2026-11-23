@@ -10,13 +10,16 @@ a feature or a breaking change is a minor version, a fix is a patch.
 ### Added
 
 - One Telescope picker, `:Telescope controlk`, that switches source by prefix: open buffers `b`,
-  project files `p`, file system `f`, line `l`, help `h`, Ex commands `:`, marks `'`, Lua `=`,
-  shell `!`, web search `w`, workspace symbols `s`, classes `c`, functions `m`, document symbols
-  `.`, references under the cursor `r`, CMake targets `cm`, target definitions `cmo` and CTest
-  tests `ct`.
+  project files `p`, file system `f`, line `l`, help `h`, Ex commands `:`, marks `'`, Lua value
+  `=`, run Lua `lua`, shell `!`, web search `w`, workspace symbols `s`, classes `c`, functions
+  `m`, document symbols `.`, references under the cursor `r`, CMake targets `cm`, target
+  definitions `cmo` and CTest tests `ct`.
 - With no prefix, the locator browses the file system; Enter on a directory goes into it.
 - `?` lists the prefixes, and a partly typed prefix suggests the prefixes it could become.
-- `:` runs what you typed as an Ex command from its first row, as `!` does for the shell.
+- `:` runs what you typed as an Ex command from its first row, as `!` does for the shell. After
+  a command and a space, the list completes its arguments as `<Tab>` does (`: set tabst`).
+- `lua` runs Lua as `:lua` does, and completes it as `<Tab>` does. `=` still shows a value.
+- What `:` and `lua` run reports its output and errors with `vim.notify`.
 - Enter on an empty list, or on a hint, opens the help section of that source.
 - User-defined sources with their own prefix (`sources`), with the item contract in
   `:h controlk-custom-sources`. A source that raises an error, calls back twice or never calls
