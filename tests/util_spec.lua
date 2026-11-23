@@ -297,9 +297,10 @@ describe("util.act", function()
   -- getmarklist() gives a global mark's file as "~/...", for any file under the home directory.
   it("opens a path written from the home directory", function()
     util.act({ path = "~/notes.txt", lnum = 2, col = 1 })
+    -- Real paths: on macOS the temporary directory /var/... is a link to /private/var/...
     assert.are.equal(
-      vim.fs.normalize(home .. "/notes.txt"),
-      vim.fs.normalize(vim.api.nvim_buf_get_name(0))
+      vim.uv.fs_realpath(home .. "/notes.txt"),
+      vim.uv.fs_realpath(vim.api.nvim_buf_get_name(0))
     )
     assert.are.equal(3, vim.api.nvim_buf_line_count(0))
     assert.are.equal(2, vim.api.nvim_win_get_cursor(0)[1])
