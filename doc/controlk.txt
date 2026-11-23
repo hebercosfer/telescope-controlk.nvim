@@ -45,6 +45,9 @@ With lazy.nvim:
 >lua
     {
       "hebercosfer/telescope-controlk.nvim",
+      -- The newest release; lazy.nvim skips release candidates here (to try
+      -- one, pin it: tag = "v0.1.0-rc.1").
+      version = "*",
       dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
       config = function()
         require("telescope").load_extension("controlk")
@@ -58,12 +61,9 @@ loads plugins. Choose another key with `keymap` (see |controlk-config|), or set
 `keymap = false` to map nothing. A key you have mapped yourself is never taken
 over.
 
-Qt Creator's own key, Ctrl+K, is not the default because most configurations
-use it to move between splits. If yours does not, `keymap = "<C-k>"` gives you
-the Qt Creator key, or map it yourself:
->lua
-    vim.keymap.set("n", "<C-k>", "<cmd>Telescope controlk<cr>", { desc = "Locator" })
-<
+Qt Creator uses Ctrl+K, but in Neovim CTRL-H/J/K/L move between splits, so
+the locator takes `<leader>k`.
+
 ==============================================================================
 4. SOURCES AND PREFIXES                                          *controlk-sources*
 
