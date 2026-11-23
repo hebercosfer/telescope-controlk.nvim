@@ -163,31 +163,12 @@ local function cutie_checks()
 
   require("controlk").setup({ style = "cutie" })
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
-  -- Nothing is visible yet, so the open and split keys must not act on a hidden row.
-  local wins = #vim.api.nvim_tabpage_list_wins(0)
-  for _, action in ipairs({ "select_default", "select_vertical", "select_horizontal" }) do
-    pcall(actions[action], prompt)
-    vim.wait(100, function()
-      return false
-    end, 20)
-  end
+  -- An empty prompt lists the prefixes, so cutie shows its list at once (T17).
+  local rows = type_text(picker, prompt, "")
   check(
-    "keys on an empty cutie prompt act on nothing",
-    vim.api.nvim_buf_is_valid(prompt)
-      and vim.api.nvim_get_current_buf() == prompt
-      and #vim.api.nvim_tabpage_list_wins(0) == wins,
-    vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
-  )
-  if not vim.api.nvim_buf_is_valid(prompt) or vim.api.nvim_get_current_buf() ~= prompt then
-    vim.cmd("silent! only")
-    picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
-  end
-  check(
-    "cutie hides the list and the preview while the prompt is empty",
-    hidden(picker.results_win)
-      and hidden(border(picker.results_border))
-      and hidden(picker.preview_win)
-      and hidden(border(picker.preview_border))
+    "an empty cutie prompt shows the list, with the prefixes",
+    not hidden(picker.results_win) and has_tag(rows, "c") and not has_tag(rows, "fs"),
+    tostring(#rows) .. " rows"
   )
   local pb = vim.api.nvim_win_get_config(border(picker.prompt_border))
   local last = vim.o.lines - vim.o.cmdheight - 2 -- the row above the status line
@@ -208,28 +189,9 @@ local function cutie_checks()
     picker.sorting_strategy == "descending",
     picker.sorting_strategy
   )
-  type_text(picker, prompt, "")
-  check(
-    "an empty prompt hides them again",
-    hidden(picker.results_win) and hidden(picker.preview_win)
-  )
-  -- Too narrow for a preview, then wide again: Telescope drops the preview window and creates
-  -- a new one, which must not appear while the prompt is empty.
-  for _, width in ipairs({ 55, 200 }) do
-    vim.o.columns = width
-    vim.cmd("doautocmd VimResized")
-    vim.wait(300, function()
-      return false
-    end, 20)
-  end
-  check(
-    "a resize keeps them hidden, a new preview included",
-    hidden(picker.results_win) and (picker.preview_win == nil or hidden(picker.preview_win)),
-    vim.inspect({ preview = picker.preview_win })
-  )
   close(prompt)
 
-  -- :Telescope resume builds a new picker from the cached one; it must hide the same way.
+  -- :Telescope resume builds a new picker from the cached one; it must work the same way.
   picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   type_text(picker, prompt, "c")
   close(prompt)
@@ -240,16 +202,13 @@ local function cutie_checks()
   prompt = vim.api.nvim_get_current_buf()
   picker = state.get_current_picker(prompt)
   if picker then
-    type_text(picker, prompt, "")
-    check(
-      "after resume, an empty prompt still hides the list",
-      hidden(picker.results_win) and hidden(picker.preview_win)
-    )
+    local again = type_text(picker, prompt, "")
+    check("after resume, an empty prompt lists the prefixes", has_tag(again, "c"))
     local resumed = type_text(picker, prompt, "b ")
     check("after resume, a prefix still switches the source", only_tag(resumed, "buffer"))
     close(prompt)
   else
-    check("after resume, an empty prompt still hides the list", false, "resume opened nothing")
+    check("after resume, an empty prompt lists the prefixes", false, "resume opened nothing")
   end
 
   require("controlk").setup({ style = "default" })
@@ -260,7 +219,10 @@ local function cutie_checks()
   end, 20)
   prompt = vim.api.nvim_get_current_buf()
   picker = state.get_current_picker(prompt)
-  check("style=cutie for one call opens cutie", picker ~= nil and hidden(picker.results_win))
+  check(
+    "style=cutie for one call opens cutie",
+    picker ~= nil and picker.sorting_strategy == "descending"
+  )
   if picker then
     close(prompt)
   end
@@ -277,7 +239,15 @@ local function lsp_and_cmake()
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
   say("== default and prefixes (LSP origin: widget.h)")
   local rows = type_text(picker, prompt, "")
-  check("default browses the project root", only_tag(rows, "fs") and has_display(rows, "src/"))
+  check(
+    "an empty prompt lists every prefix, and only prefixes",
+    has_tag(rows, "c") and has_tag(rows, "?") and not has_tag(rows, "fs")
+  )
+  rows = type_text(picker, prompt, "sr")
+  check(
+    "text that is no prefix browses the project root",
+    only_tag(rows, "fs") and has_display(rows, "src/")
+  )
 
   -- Enter on a directory goes into it, through Telescope's real select action, and keeps the
   -- prefix that was typed.
@@ -294,7 +264,7 @@ local function lsp_and_cmake()
     settle(picker)
     return vim.api.nvim_buf_get_lines(prompt, 0, 1, false)[1] or "", rows_of(picker)
   end
-  local entered, inside = enter_dir("", "src/")
+  local entered, inside = enter_dir("sr", "src/")
   check(
     "enter on a directory goes into it",
     entered == picker.prompt_prefix .. "src/" and has_display(inside, "widget.h"),
@@ -347,12 +317,20 @@ local function lsp_and_cmake()
   rows = type_text(picker, prompt, ": Telescope")
   check(": finds Ex commands", has_display(rows, "Telescope"))
 
+  rows = type_text(picker, prompt, "? controlk-sources")
+  check(
+    "? text lists :help's match first",
+    has_tag(rows, "help") and rows[1].value.text == "controlk-sources",
+    rows[1] and rows[1].value.text
+  )
+  rows = type_text(picker, prompt, "? bufgetlines")
+  check("? finds a tag :help misses, by fuzzy matching", has_display(rows, "nvim_buf_get_lines()"))
   rows = type_text(picker, prompt, "h lua-guide")
-  check("h finds help tags", has_tag(rows, "help") and #rows > 0)
+  check("h is no prefix any more", not has_tag(rows, "help"))
 
   rows = type_text(picker, prompt, "? ")
   check("? lists the prefixes", has_tag(rows, "c") and has_display(rows, "Workspace classes"))
-  check("? does not list itself", not has_tag(rows, "?"))
+  check("? lists itself, as help", has_tag(rows, "?"))
 
   -- Enter on a prefix goes through Telescope's real select action: the input becomes
   -- "c " and the picker stays open on the classes source.
@@ -387,7 +365,7 @@ local function lsp_and_cmake()
     vim.deep_equal(first, { "c", "cm", "cmo", "ct" }),
     table.concat(first, ",")
   )
-  check("c still searches the default sources", has_tag(rows, "fs"))
+  check("c lists only prefixes, not the default sources", not has_tag(rows, "fs") and #rows == 4)
 
   rows = type_text(picker, prompt, "cmx")
   check("cmx suggests nothing", not has_tag(rows, "cm") and not has_tag(rows, "cmo"))
@@ -822,7 +800,7 @@ local function config_session()
 
   say("== customised prefixes")
   local picker, prompt = open_picker(FIX .. "/proj/src/widget.h")
-  local rows = type_text(picker, prompt, "")
+  local rows = type_text(picker, prompt, "widget")
   check("custom default_sources: only files", only_tag(rows, "file") and #rows > 0)
   rows = type_text(picker, prompt, "C Widget")
   check("custom prefix C reaches classes", only_tag(rows, "class") and has_display(rows, "Widget"))
