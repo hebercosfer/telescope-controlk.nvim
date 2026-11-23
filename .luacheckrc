@@ -1,5 +1,5 @@
 -- Lint settings for luacheck, run by `make lint` over lua/ and tests/.
--- The line length follows the owner's .stylua.toml (column width 100).
+-- The line length follows .stylua.toml (column width 100).
 
 std = "luajit"
 codes = true

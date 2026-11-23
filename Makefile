@@ -19,7 +19,7 @@ test:
 		-c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua', sequential = true }"
 
 # The integration harness drives the real picker in two sessions. It also loads
-# telescope-fzf-native, as the owner's config does. A failed check exits non-zero.
+# telescope-fzf-native, as many configurations do. A failed check exits non-zero.
 # Both sessions append to one deprecation report, checked once they are done.
 # run.lua quits on its own when it finishes. The cquit after it runs only when the script
 # stopped on an error, which would otherwise leave headless Neovim waiting forever.
