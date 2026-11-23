@@ -66,6 +66,21 @@ local function wipe_terminals()
     end
   end
 end
+-- On the Windows runner, headless Neovim segfaults at random while a terminal job ends (exit
+-- 139), before the harness touches the buffer. The checks that start terminal jobs (CMake
+-- build, ctest, `!`) are skipped there; tests/shell_spec.lua still checks what `!` runs.
+local TERMINALS = vim.fn.has("win32") == 0
+
+-- False, and logs each named check as skipped, when terminal jobs cannot run here.
+local function terminals_run(...)
+  if not TERMINALS then
+    for _, name in ipairs({ ... }) do
+      say("SKIP " .. name .. "  -- terminal jobs crash headless Neovim on the Windows runner")
+    end
+  end
+  return TERMINALS
+end
+
 local function check(name, cond, detail)
   if cond then
     passed = passed + 1
@@ -574,7 +589,10 @@ local function lsp_and_cmake()
   os.remove(built)
   os.remove(FIX .. "/cmake_proj/build-ninja/Testing/Temporary/LastTest.log")
 
-  if corelib then
+  if
+    corelib
+    and terminals_run("enter on a target opens a terminal buffer", "enter on a target builds it")
+  then
     corelib.run(corelib)
     check("enter on a target opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
     vim.wait(120000, function()
@@ -583,7 +601,13 @@ local function lsp_and_cmake()
     check("enter on a target builds it", vim.fn.filereadable(built) == 1, built)
   end
 
-  if run_all then
+  if
+    run_all
+    and terminals_run(
+      "enter on Run all tests runs ctest",
+      "enter on Run all tests opens a terminal buffer"
+    )
+  then
     run_all.run(run_all)
     local log = FIX .. "/cmake_proj/build-ninja/Testing/Temporary/LastTest.log"
     vim.wait(120000, function()
@@ -608,7 +632,7 @@ local function lsp_and_cmake()
   end
   close(prompt)
   check("! lists the command", shell_row ~= nil)
-  if shell_row then
+  if shell_row and terminals_run("! opens a terminal buffer") then
     shell_row.run(shell_row)
     check("! opens a terminal buffer", vim.bo.buftype == "terminal", vim.bo.buftype)
   end
@@ -777,9 +801,11 @@ local function lsp_and_cmake()
     vim.api.nvim_buf_get_name(0) .. ":" .. vim.api.nvim_win_get_cursor(0)[1]
   )
 
-  enter_on(origin, "! echo controlk-enter", "shell")
-  check("! through Enter opens a terminal", vim.bo.buftype == "terminal", vim.bo.buftype)
-  wipe_terminals()
+  if terminals_run("! through Enter opens a terminal") then
+    enter_on(origin, "! echo controlk-enter", "shell")
+    check("! through Enter opens a terminal", vim.bo.buftype == "terminal", vim.bo.buftype)
+    wipe_terminals()
+  end
 
   cutie_checks()
 end
