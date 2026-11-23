@@ -30,7 +30,8 @@ test-integration:
 		DEPRECATION_REPORT='$(DEPRECATION_REPORT)' SESSION=$$session FZF=1 \
 			$(NVIM_BIN) --headless -u NONE \
 			--cmd "set rtp+=$(CURDIR),$(TELESCOPE_DIR),$(PLENARY_DIR),$(FZF_DIR)" \
-			-c "luafile tests/integration/run.lua" -c "cquit 2" || exit 1; \
+			-c "luafile tests/integration/run.lua" -c "cquit 2" \
+			|| { echo "Neovim exited with $$? (session $$session)"; exit 1; }; \
 	done
 	$(MAKE) --no-print-directory check-deprecations
 
