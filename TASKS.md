@@ -39,6 +39,10 @@ Open work, roughly in order of value. Changes go on `feature/` or `bugfix/` bran
   both. Grouping them is open.
 - The file system browser does not create files, which Qt Creator's locator does.
 - The picker title is fixed to "Locator".
+- Windows: CI does not run the rows that open a terminal (`!`, `cm` builds, `ct` tests). On the
+  Windows runner, headless Neovim segfaults at random while a terminal job ends, before
+  controlk touches the buffer, so the harness skips those checks there. The command `!` sends is
+  still unit-tested. They have not been tried on Windows with a UI yet.
 - Telescope bug, not controlk's: when a resize makes the screen too narrow for the preview,
   Telescope raises `pickers.lua:204: attempt to index field 'preview' (a nil value)`, with every
   style, `default` included. It is not patched here; it belongs upstream in telescope.nvim.
