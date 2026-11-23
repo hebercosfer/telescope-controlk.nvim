@@ -17,7 +17,9 @@ return {
 
     for _, m in ipairs(vim.fn.getmarklist()) do
       if m.file and m.file ~= "" then
-        table.insert(items, mark_item(m.mark, m.file, m.pos[2], m.pos[3]))
+        -- getmarklist() gives "~/..." for a file under the home directory; the previewer and
+        -- bufadd() need the real path.
+        table.insert(items, mark_item(m.mark, vim.fs.normalize(m.file), m.pos[2], m.pos[3]))
       end
     end
 

@@ -211,8 +211,9 @@ function M.act(item)
     vim.api.nvim_set_current_buf(item.bufnr)
   elseif item.path then
     -- Not `:edit`: editing a file that is already open reloads it, which
-    -- detaches its language server.
-    local bufnr = vim.fn.bufadd(item.path)
+    -- detaches its language server. Normalized first: bufadd() takes "~/x" literally and
+    -- would make a new, empty buffer of that name (getmarklist() writes paths so).
+    local bufnr = vim.fn.bufadd(vim.fs.normalize(item.path))
     vim.bo[bufnr].buflisted = true
     vim.api.nvim_set_current_buf(bufnr)
   else

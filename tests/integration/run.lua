@@ -1014,10 +1014,13 @@ end
 
 prepare()
 
-if SESSION == "lsp" then
-  lsp_and_cmake()
-else
-  config_session()
+-- An error inside a session would stop the script, and headless Neovim does not always show
+-- the message (the first Windows runs lost it). Print it, count it as a failure, and go on to
+-- the result line.
+local ok, err = xpcall(SESSION == "lsp" and lsp_and_cmake or config_session, debug.traceback)
+if not ok then
+  say("ERROR in session " .. SESSION .. ": " .. tostring(err))
+  failed = failed + 1
 end
 
 say(("RESULT %s: %d passed, %d failed"):format(SESSION, passed, failed))
