@@ -19,7 +19,8 @@ a feature or a breaking change is a minor version, a fix is a patch.
 - `:` runs what you typed as an Ex command from its first row, as `!` does for the shell.
 - Enter on an empty list, or on a hint, opens the help section of that source.
 - User-defined sources with their own prefix (`sources`), with the item contract in
-  `:h controlk-custom-sources`.
+  `:h controlk-custom-sources`. A source that raises an error, calls back twice or never calls
+  back cannot break the locator: it shows as a hint, and the default view lists the others.
 - Styles: any Telescope layout or theme, and `cutie`, after Qt Creator's locator (bottom left,
   60 columns by default, list hidden until you type).
 - The `Direct` web engine opens the typed address itself.

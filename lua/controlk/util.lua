@@ -113,6 +113,90 @@ function M.tag_items(items, tag)
   return items
 end
 
+--- How long the default view waits for one of its sources before it lists the others
+--- without it. A source picked by its prefix has no limit: it is the only one listed.
+M.DEFAULT_TIMEOUT_MS = 5000
+
+-- "file.lua:12: boom" -> "boom".
+local function error_message(err)
+  return (tostring(err):gsub("^.-:%d+: ", ""))
+end
+
+--- Ask one source for its items, so that a source that misbehaves cannot break the picker.
+--- Since user sources (the `sources` option) anyone can write one. An error becomes a
+--- notification and a hint row naming the source; only the first answer counts; a nil answer
+--- is no items. With `timeout_ms`, a source that has not answered by then gives a hint
+--- instead, and its late answer is ignored. An error raised later from a source's own
+--- callback (a `vim.schedule`, a job) cannot be caught here.
+---@param source table a source: `id`, `tag`, `items(query, ctx, done)`
+---@param query string
+---@param ctx table
+---@param done fun(items: table[])
+---@param timeout_ms integer|nil
+function M.call_source(source, query, ctx, done, timeout_ms)
+  local id = source.id or "?"
+  local answered = false
+  local timer
+
+  local function finish(items)
+    if answered then
+      return
+    end
+    answered = true
+    if timer then
+      timer:stop()
+      timer:close()
+      timer = nil
+    end
+    done(M.tag_items(type(items) == "table" and items or {}, source.tag))
+  end
+
+  if timeout_ms then
+    timer = vim.uv.new_timer()
+    timer:start(
+      timeout_ms,
+      0,
+      vim.schedule_wrap(function()
+        finish({ M.hint(("%s gave no answer within %d ms"):format(id, timeout_ms), source.tag) })
+      end)
+    )
+  end
+
+  local ok, err = pcall(source.items, query, ctx, finish)
+  if not ok then
+    local message = error_message(err)
+    vim.notify(("controlk: source %s failed: %s"):format(id, message), vim.log.levels.ERROR)
+    finish({ M.hint(("%s failed: %s"):format(id, message), source.tag) })
+  end
+end
+
+--- Ask several sources at once, and hand over all their items, in the sources' order, once
+--- each has answered (or given up, see `call_source`).
+---@param sources table[]
+---@param query string
+---@param ctx table
+---@param done fun(items: table[])
+---@param timeout_ms integer|nil
+function M.collect(sources, query, ctx, done, timeout_ms)
+  local results, pending = {}, #sources
+  if pending == 0 then
+    return done({})
+  end
+  for index, source in ipairs(sources) do
+    M.call_source(source, query, ctx, function(items)
+      results[index] = items
+      pending = pending - 1
+      if pending == 0 then
+        local all = {}
+        for i = 1, #sources do
+          vim.list_extend(all, results[i])
+        end
+        done(all)
+      end
+    end, timeout_ms)
+  end
+end
+
 --- Carry out the default action for a picked item.
 ---@param item table
 function M.act(item)
