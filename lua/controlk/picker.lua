@@ -82,18 +82,13 @@ end
 local function run_default(query, ctx, done)
   -- A partly typed prefix ("c") lists the prefixes it could become before the usual results.
   local collected = prefixes.matching(query, ctx.config.prefix_map, ctx.config.source_map)
-  local function step(index)
-    local id = ctx.config.default_sources[index]
-    if not id then
-      return done(collected)
-    end
-    local source = ctx.config.source_map[id]
-    source.items(query, ctx, function(items)
-      vim.list_extend(collected, util.tag_items(items, source.tag))
-      step(index + 1)
-    end)
-  end
-  step(1)
+  local sources = vim.tbl_map(function(id)
+    return ctx.config.source_map[id]
+  end, ctx.config.default_sources)
+  -- All at once, with a time limit, so one slow or broken source does not hide the others.
+  util.collect(sources, query, ctx, function(items)
+    done(vim.list_extend(collected, items))
+  end, util.DEFAULT_TIMEOUT_MS)
 end
 
 local function finder_for(id, ctx)
@@ -105,9 +100,7 @@ local function finder_for(id, ctx)
   else
     local source = ctx.config.source_map[id]
     items = function(query, done)
-      source.items(query, ctx, function(list)
-        done(util.tag_items(list, source.tag))
-      end)
+      util.call_source(source, query, ctx, done)
     end
   end
 

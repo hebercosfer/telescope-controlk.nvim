@@ -100,3 +100,179 @@ describe("util.is_absolute", function()
     assert.is_false(util.is_absolute("C:relative"))
   end)
 end)
+
+describe("util.call_source", function()
+  local notified
+  local notify = vim.notify
+  before_each(function()
+    notified = {}
+    vim.notify = function(msg, level)
+      table.insert(notified, { msg = msg, level = level })
+    end
+  end)
+  after_each(function()
+    vim.notify = notify
+  end)
+
+  it("passes a source's items on, tagged", function()
+    local got
+    local source = {
+      id = "good",
+      tag = "g",
+      items = function(_, _, done)
+        done({ { text = "a" } })
+      end,
+    }
+    util.call_source(source, "", {}, function(items)
+      got = items
+    end)
+    assert.are.same({ { text = "a", tag = "g" } }, got)
+  end)
+
+  it("turns an error into a hint naming the source, and notifies it", function()
+    local got
+    local source = {
+      id = "broken",
+      tag = "b",
+      items = function()
+        error("boom")
+      end,
+    }
+    util.call_source(source, "", {}, function(items)
+      got = items
+    end)
+    assert.are.equal(1, #got)
+    assert.is_true(got[1].hint)
+    assert.truthy(got[1].text:find("broken", 1, true))
+    assert.truthy(got[1].text:find("boom", 1, true))
+    assert.are.equal(1, #notified)
+    assert.are.equal(vim.log.levels.ERROR, notified[1].level)
+    assert.truthy(notified[1].msg:find("broken", 1, true))
+  end)
+
+  it("honours only the first answer", function()
+    local calls = 0
+    local source = {
+      id = "twice",
+      items = function(_, _, done)
+        done({ { text = "first" } })
+        done({ { text = "second" } })
+      end,
+    }
+    local got
+    util.call_source(source, "", {}, function(items)
+      calls = calls + 1
+      got = items
+    end)
+    assert.are.equal(1, calls)
+    assert.are.equal("first", got[1].text)
+  end)
+
+  it("treats a nil answer as no items", function()
+    local got
+    local source = {
+      id = "nil",
+      items = function(_, _, done)
+        done(nil)
+      end,
+    }
+    util.call_source(source, "", {}, function(items)
+      got = items
+    end)
+    assert.are.same({}, got)
+  end)
+
+  it("gives up on a source that never answers, after the timeout", function()
+    local got
+    local source = {
+      id = "silent",
+      items = function() end,
+    }
+    util.call_source(source, "", {}, function(items)
+      got = items
+    end, 20)
+    assert.is_nil(got)
+    vim.wait(500, function()
+      return got ~= nil
+    end)
+    assert.is_true(got[1].hint)
+    assert.truthy(got[1].text:find("silent", 1, true))
+  end)
+end)
+
+describe("util.collect", function()
+  local notify = vim.notify
+  before_each(function()
+    vim.notify = function() end
+  end)
+  after_each(function()
+    vim.notify = notify
+  end)
+
+  local function source(id, behaviour)
+    return { id = id, tag = id, items = behaviour }
+  end
+
+  it("keeps the sources' order, whatever order they answer in", function()
+    local later
+    local sources = {
+      source("slow", function(_, _, done)
+        later = done
+      end),
+      source("fast", function(_, _, done)
+        done({ { text = "f" } })
+      end),
+    }
+    local got
+    util.collect(sources, "", {}, function(items)
+      got = items
+    end)
+    assert.is_nil(got)
+    later({ { text = "s" } })
+    assert.are.same({ "s", "f" }, {
+      got[1].text,
+      got[2].text,
+    })
+  end)
+
+  it("still lists the others when one source errors, answers twice or never answers", function()
+    local sources = {
+      source("good", function(_, _, done)
+        done({ { text = "ok" } })
+      end),
+      source("broken", function()
+        error("boom")
+      end),
+      source("twice", function(_, _, done)
+        done({ { text = "1" } })
+        done({ { text = "2" } })
+      end),
+      source("silent", function() end),
+    }
+    local got, calls = nil, 0
+    util.collect(sources, "", {}, function(items)
+      calls = calls + 1
+      got = items
+    end, 20)
+    vim.wait(500, function()
+      return got ~= nil
+    end)
+    assert.are.equal(1, calls)
+    local texts = vim.tbl_map(function(item)
+      return item.text
+    end, got)
+    assert.are.equal("ok", texts[1])
+    assert.truthy(texts[2]:find("broken", 1, true))
+    assert.are.equal("1", texts[3])
+    assert.truthy(texts[4]:find("silent", 1, true))
+    assert.are.equal(4, #got)
+  end)
+
+  it("answers at once with no sources", function()
+    local got
+    util.collect({}, "", {}, function(items)
+      got = items
+    end)
+    assert.are.same({}, got)
+  end)
+end)

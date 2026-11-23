@@ -282,6 +282,12 @@ project root), `origin_buf` and `origin_win` (where the locator was opened),
 as the picker). Callbacks of |vim.system()| run in a fast event: wrap
 `done` in |vim.schedule()| before calling it from there.
 
+A source that raises an error does not break the locator: the error is
+notified, and a hint row names the source. Only the first `done` counts. In
+the default view, where several sources are listed together, a source that
+has not called `done` within 5 seconds is shown as a hint, and the others are
+listed without it.
+
 An item is a plain table. Every field is optional except `text`:
 
   `text`         what the row shows
