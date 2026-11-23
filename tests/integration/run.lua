@@ -4,7 +4,7 @@
 --     --cmd "set rtp+=$PWD,$LAZY/telescope.nvim,$LAZY/plenary.nvim" \
 --     -c "luafile tests/integration/run.lua"
 --   SESSION=config (same command)
--- FZF=1 also loads telescope-fzf-native, as the owner's config does. Put its directory on the
+-- FZF=1 also loads telescope-fzf-native, as many configurations do. Put its directory on the
 -- runtimepath too: --cmd "set rtp+=$LAZY/telescope-fzf-native.nvim". Without this, the picker's
 -- sorter is never tested with a sorter that keeps state.
 -- Needs clangd, cmake (with Ninja) and ctest on PATH. Works in a temporary copy of the

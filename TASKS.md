@@ -1,120 +1,34 @@
-# controlk: task list
+# controlk: roadmap
 
-Status as of the last session. Re-check with `git status` and `git log` before acting.
+Open work, roughly in order of value. Changes go on `feature/` or `bugfix/` branches and land on
+`main` by pull request, rebased (no merge commits), once CI is green. What is done is in
+`CHANGELOG.md` and in the git history.
 
-## Repository state
+## Next
 
-- Changes go on `feature/` or `bugfix/` branches and land on `main` by PR, once CI is green.
-- Remote `origin` is github.com/hebercosfer/telescope-controlk.nvim.
-- CI (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`: four Neovim and
-  Telescope pairs, each running the unit specs and the integration harness, plus lint and an
-  aggregate `tests` check. The pairs are in `docs/superpowers/specs/2026-11-18-version-matrix-design.md`.
-- The harness fails on any deprecated call from controlk's own code, and on any upstream
-  deprecation not named in `tests/deprecations-allow.txt` (see `tests/check_deprecations.lua`).
+- **T7. Stream the default view.** The default view lists its sources together, once each has
+  answered. Show each source's rows as they arrive instead. Acceptance: on a repository with
+  about 10k files, the first rows appear before the slowest source has answered, and the
+  existing tests pass.
+- **T10. Included files.** A source listing the files the current file includes. clangd does not
+  return includes from `workspace/symbol`; the options are `textDocument/documentLink` per file,
+  or parsing `#include` lines. Write a feasibility note first, then implement the chosen way.
+- **T14. Prefix icons.** When a prefix and a space are typed, show a Nerd Font icon for that
+  source: a CMake icon for the CMake sources, a class symbol for classes, a globe for web search,
+  and one for every other prefix. The icon belongs to the source, as a field next to `tag`, so
+  the Telescope adapter and a future Snacks adapter can both draw it, and a user without a Nerd
+  Font can turn it off. Acceptance: each default prefix has an icon, the prefix list shows them,
+  and turning icons off leaves the text-only rows.
+- **T11. Snacks adapter.** Add `lua/controlk/snacks.lua`. Sources stay unchanged; the adapter
+  maps `items(query, ctx, done)` to a Snacks `finder(opts, ctx)`. Acceptance: the prefixes work
+  the same way, and the LSP session's counts match the Telescope run.
 
-## Blocked on the owner
+## Known limitations
 
-These need a decision or an explicit yes. Do not start them on your own.
-
-- **T1. Fix the commit history.** Resolved 2026-11-18 with option (b), a second commit. `72ea0af`
-  was not amended. The options are kept for the record:
-  (a) amend `72ea0af` so it includes every file, reusing the existing message. This needs an
-      explicit amend request from the owner;
-  (b) add a second commit with the remaining files.
-  Either way, follow the commit rules in CLAUDE.md.
-- **T2. Choose the locator key.** Resolved 2026-11-18 with `<C-k>`; changed 2026-11-20 to
-  `<leader>k` (owner's decision), because `<C-k>` is split navigation in most configurations,
-  the owner's included. `keymap = "<C-k>"` still gives the Qt Creator key.
-- **T3. Create the GitHub repository and push.** Done 2026-11-18: private repository, pushed at the
-  owner's request.
-
-## Ready for an agent
-
-Ordered by value. Each item lists its acceptance check.
-
-- **T4. Commit the rest of the work.** Done in the second commit, with the terminal fix and the help file. Stage with `git add -N` for new files. Acceptance:
-  `git ls-tree -r HEAD --name-only | wc -l` shows every file in the project, and both test suites
-  still pass on that commit.
-- **T5. Add `:checkhealth controlk`.** Done 2026-11-20: also checks the Neovim floor, Telescope
-  and plenary, the locator key, where clangd finds `compile_commands.json`, and the running
-  servers. Original text: create `lua/controlk/health.lua` using `vim.health`. Report:
-  `rg` or `git` available; `cmake`, `ctest` and `cmake` with Ninja available; any configuration
-  warnings from `config.resolve`. Acceptance: `nvim --headless -c "checkhealth controlk" -c "qa"`
-  reports OK or WARN lines and no errors.
-- **T6. Write vimdoc.** Done: `doc/controlk.txt`, written from the README. `:helptags` runs clean,
-  and `:help controlk-sources` opens on 0.10.4 and 0.12.6. Generating it from annotations, as
-  telescope.nvim does, is still open. Acceptance: `:help controlk` opens, and `:helptags doc`
-  runs without errors.
-- **T7. Stream the default view.** `run_default` in `picker.lua` waits for all default sources
-  before showing anything, so a large repository shows nothing until `rg --files` finishes. Show
-  buffers first and add the rest as they arrive. Acceptance: on a repository with about 10k files,
-  the first buffer entries appear before the file listing completes, and the existing tests pass.
-- **T8. Per-file columns for workspace symbols.** Done 2026-11-20: each workspace symbol's
-  column is converted with its own file's line (its buffer if loaded, else the disk). `lsp.lua` converts columns with the origin
-  buffer's lines, so symbols in other files can get wrong byte columns when lines contain multibyte
-  characters. Convert using the target file's lines. Acceptance: a unit test with a multibyte line
-  gives the right column.
-- **T9. Cover the remaining sources in the harness.** Done 2026-11-20: Enter through Telescope's
-  real action on `t` (command line, feedkeys stubbed), `b` (mark jump), `r` (`vim.ui.open`
-  stubbed, encoded URL), `!` (terminal) and `=` (register); `f` entering a directory since #9. Add checks to `tests/integration/run.lua` for
-  `t` (fills the command line), `b` (marks), `r` (stub `vim.ui.open` and check the URL), `f`
-  (directory entry), `!` (terminal opens), `=` (result copied to the unnamed register). Acceptance:
-  the LSP session still passes, and the new checks pass.
-- **T10. Decide `ai` (included files).** First write a feasibility note in `TASKS.md`. clangd does
-  not return includes from `workspace/symbol`; options are `textDocument/documentLink` per file or
-  parsing `#include` lines. Implement only after the note is agreed with the owner.
-- **T11. Snacks adapter (wish, not a requirement).** Add `lua/controlk/snacks.lua`. Sources stay
-  unchanged; the adapter maps `items(query, ctx, done)` to a Snacks `finder(opts, ctx)`. Acceptance:
-  the prefixes work the same way, and the LSP session's counts match the Telescope run.
-- **T12. Check Neovim 0.11.** Done: CI runs both suites on 0.10.4, 0.11.7 and 0.12.6, and the
-  README states 0.10.4 as the floor (2026-11-20).
-- **T13. Consider a CI workflow.** Done 2026-11-19 (PR #2), with the deprecation check added
-  after it. The README's floor (0.10.4) is done. Still to build, from the version-matrix design:
-  the weekly `compat.yml` job, and the release workflow.
-
-- **T14. Prefix icons (wish, owner's request 2026-11-19).** When a prefix and a space are typed,
-  show a Nerd Font icon for that source, for example a CMake icon for `cm`, `cmo` and `ct`, a class
-  symbol for `c`, and a globe or "www" for `r`. Choose an icon for every other prefix too, and check
-  each one renders in the owner's font. The icon belongs to the source, as a field next to `tag`,
-  so `picker.lua` and a future Snacks adapter can both draw it, and a user without a Nerd Font
-  can turn it off. Acceptance: each default prefix has an icon, the `?` list shows them, and
-  turning icons off leaves today's text-only rows.
-
-- **T15. User-defined sources and prefixes (owner's request 2026-11-19).** controlk part done
-  2026-11-20 on `feature/task-custom-sources`: the `sources` option (`config.resolve` validates it
-  and builds `source_map`, which `picker.lua` and the `?` list read instead of the registry; a
-  built-in keeps its prefix on a clash), unit specs, three harness checks, and
-  `:h controlk-custom-sources` with the item contract and a live-grep example. The owner's
-  multigrep now runs as a `g` source in their own configuration, which is a separate repository.
-  Original text: today the sources
-  are fixed in `sources/init.lua`; `prefixes` can only rename or remove them. Let a user's config
-  add a source with its own prefix, then use it in the owner's config for their multigrep.
-  - In controlk: a `sources` option, for example
-    `sources = { multigrep = { prefix = "g", title = "Multi grep", items = function(query, ctx, done) ... end } }`.
-    The registry accepts these next to the built-ins; `config.resolve` validates them (a
-    function `items`, a valid prefix, no clash with a built-in id, the same prefix-clash report
-    as today). They show in the `?` list and in prefix suggestions like any other source.
-    Document the item contract (`text`, `path`, `lnum`, `col`, `passthrough`...) for users, since
-    it becomes public surface.
-  - In the owner's config (a separate repository): move the logic of their
-    `lua/util/multigrep.lua` (mapped to `<leader>mg`) into a controlk source.
-    It runs `rg`; the query is split on two spaces into a pattern (`-e`) and a glob (`-g`), with
-    `--smart-case`. Items carry `path`, `lnum` and `col`, and `passthrough = true`, since rg
-    already filtered them. Run `rg` with `vim.system` and wrap the callback in `vim.schedule`
-    (fast-event rule), or reuse `util.await`. Keep `<leader>mg` working, or point it at the
-    locator with the prefix typed. The owner's multigrep opens in Telescope's default layout
-    today; inside controlk it takes the locator's style (cutie for the owner).
-  - Acceptance: unit specs for the option's validation; a harness check that a user source
-    with a prefix lists its rows, and that `?` shows it; the owner's `g pattern  *.lua` gives the
-    same rows as `<leader>mg` with `pattern  *.lua`.
-
-## Known limitations (no task yet)
-
-- clangd returns a class and its constructor as two symbols under `:`. The picker shows both.
-  Decide whether to group them.
-- `f` (and the default view) does not create files, which Qt Creator does.
+- clangd returns a class and its constructor as two workspace symbols, and the picker shows
+  both. Grouping them is open.
+- The file system browser does not create files, which Qt Creator's locator does.
 - The picker title is fixed to "Locator".
-- Telescope bug, not ours: when a resize makes the screen too narrow for the preview, Telescope
-  raises `pickers.lua:204: attempt to index field 'preview' (a nil value)`. It happens with every
-  style, `default` included. Not patched here (upstream rule); worth reporting to telescope.nvim.
-- The harness has run only on Linux. macOS and Windows belong to the release gate.
+- Telescope bug, not controlk's: when a resize makes the screen too narrow for the preview,
+  Telescope raises `pickers.lua:204: attempt to index field 'preview' (a nil value)`, with every
+  style, `default` included. It is not patched here; it belongs upstream in telescope.nvim.

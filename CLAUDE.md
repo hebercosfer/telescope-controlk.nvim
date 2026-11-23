@@ -2,8 +2,7 @@
 
 A Telescope locator modelled on Qt Creator's Locator (Ctrl+K). One picker; a prefix and a space
 selects a source. Lua, Neovim 0.10.4+ (CI: 0.10.4, 0.11.7, 0.12.6), telescope.nvim, plenary.nvim.
-The repository is github.com/hebercosfer/telescope-controlk.nvim. The task list is in TASKS.md;
-read it before starting work.
+The repository is github.com/hebercosfer/telescope-controlk.nvim. Open work is in TASKS.md.
 
 ## Layout
 
@@ -59,16 +58,10 @@ the deprecation check. Run single specs through the directory runner: `PlenaryBu
 
 Indentation is 2 spaces. Format Lua with stylua (`.stylua.toml`); `make lint` checks it.
 
-## Commits and remotes
+## Commits
 
-- The maintainer's own agent instructions say how commits are made (the maintainer confirms each
-  one in their editor); follow them. Never run `git commit` yourself unless they say so.
-- No `Co-Authored-By` or other trailers.
-- Do not push, and do not create or change a GitHub repository, without an explicit yes from the
-  maintainer. Amend only when the maintainer asks for an amend.
+- Changes land on `main` by pull request, rebased (no merge commits), once CI is green.
 
 ## Other context
 
-- The default key is `<leader>k`, not `<C-k>`: most configurations use `<C-k>` for split navigation
-  (TASKS.md, T2).
-- The maintainer's own Neovim configuration is a separate repository. Do not change it from here.
+- The default key is `<leader>k`, not `<C-k>`: in Neovim, Ctrl+H/J/K/L move between splits.

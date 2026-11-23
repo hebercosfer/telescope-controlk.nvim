@@ -1,6 +1,6 @@
 -- Test-only hook around vim.deprecate. The product code is not touched.
 --
--- The owner's rule: a deprecation fails the run only when controlk's own code can change to
+-- The rule: a deprecation fails the run only when controlk's own code can change to
 -- remove it. So the hook looks at the caller of the deprecated feature, debug.getinfo(3):
 -- level 1 is this wrapper, 2 the feature that called vim.deprecate, 3 the feature's caller.
 -- C frames such as pcall are skipped, up to the first Lua caller.

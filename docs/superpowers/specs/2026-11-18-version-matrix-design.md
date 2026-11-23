@@ -1,13 +1,13 @@
 # controlk: Neovim and Telescope version matrix
 
-Status: approved by the owner. Built in this order: terminal fix, formatting, lint, CI, release. Date: 2026-11-18.
+Status: approved. Built in this order: terminal fix, formatting, lint, CI, release. Date: 2026-11-18.
 
 ## Intent
 
 controlk should prove, before each change lands, that it works on the Neovim and
 Telescope versions it claims, and that its own code makes no deprecated calls.
 Today it runs only on Neovim 0.12.6 with Telescope master, and it has no CI.
-The README claims Neovim 0.11+. The owner wants 0.10 covered, with the earliest
+The README claims Neovim 0.11+. The goal is 0.10 covered, with the earliest
 Telescope release built for it.
 
 ## Goals
@@ -36,9 +36,9 @@ Telescope release built for it.
 
 - Telescope v0.2.0 and v0.2.2 both require Neovim 0.10.4 or newer, and both
   branch on `nvim-0.11` in `lua/telescope/debounce.lua` and `utils.lua`.
-- Only Neovim 0.12.6 is installed on this machine. CI must download the others
+- Only Neovim 0.12.6 is installed on the development machine. CI must download the others
   from neovim/neovim releases and verify their checksums.
-- The tests must not depend on the owner's lazy.nvim directory. Today
+- The tests must not depend on a developer's lazy.nvim directory. Today
   `tests/integration/run.lua` gets Telescope from `~/.local/share/nvim/lazy`.
 - On Neovim 0.10.4, `jobstart(..., { term = true })` returns a job but does not
   create a terminal buffer. `util.terminal` relies on it, so `!`, the `cm` build
@@ -59,10 +59,9 @@ Telescope release built for it.
    per branch. Rejected: it does not answer whether controlk works across
    Neovim and Telescope versions.
 2. **Full cross product**, three Neovim by three Telescope, nine legs. Rejected:
-   the owner asked for pairs, and nine legs cost much more for little extra
+   pairs answer the question, and nine legs cost much more for little extra
    signal.
-3. **Pairs**, one Neovim with one Telescope per leg. **Chosen by the owner,
-   2026-11-18.**
+3. **Pairs**, one Neovim with one Telescope per leg. **Chosen, 2026-11-18.**
 
 ## Design
 
@@ -71,7 +70,7 @@ Telescope release built for it.
 | Leg | Neovim | Telescope | Why this pair |
 |---|---|---|---|
 | floor | v0.10.4 | v0.2.0 | First Telescope release whose minimum is 0.10.4. The 0.10 path of its `nvim-0.11` branches runs here. |
-| legacy | v0.10.4 | v0.1.9 | Newest 0.1.x release, requested by the owner. It targets Neovim 0.9, so this leg shows the 0.1 line still runs on 0.10. |
+| legacy | v0.10.4 | v0.1.9 | Newest 0.1.x release. It targets Neovim 0.9, so this leg shows the 0.1 line still runs on 0.10. |
 | middle | v0.11.7 | v0.2.2 | Latest 0.11 patch with the latest Telescope tag. |
 | current | v0.12.6 | master at `1e1bab7` | What controlk is developed on. Pinned, so PRs do not move under us. |
 
@@ -104,7 +103,7 @@ been run here.
 
 ### Deprecation policy
 
-The owner's rule, 2026-11-18: a deprecation fails the run only when controlk's own code
+The rule, 2026-11-18: a deprecation fails the run only when controlk's own code
 can change to remove it. Otherwise it is an error only in the CI deprecation check.
 
 - A hook in the test init wraps `vim.deprecate` before any plugin loads. It is for
@@ -115,8 +114,6 @@ can change to remove it. Otherwise it is an error only in the CI deprecation che
     deprecated feature. The hook raises an error at once, and the test run fails.
   - Otherwise the caller is Neovim, Telescope or plenary, the runtime dependencies.
     The hook writes the deprecation to a report file and lets the run continue.
-    claudecode.nvim is not in this list. controlk does not use it at runtime; only
-    developing controlk does.
 - Runtime frames have source names that start with `@vim/`, as the probe showed. The
   builder matches that form and an absolute `$VIMRUNTIME` path.
 - The CI deprecation check runs the integration legs with the report on. Any entry
@@ -126,7 +123,7 @@ can change to remove it. Otherwise it is an error only in the CI deprecation che
   entry still fails until someone allows it on purpose.
 - Edge case under this rule: controlk calls a Neovim function that is not deprecated,
   and that function calls a deprecated one inside Neovim. The caller is Neovim, so the
-  entry goes to the report. If it keeps appearing, the owner decides whether to change
+  entry goes to the report. If it keeps appearing, the maintainer decides whether to change
   our call.
 - `termopen()` is version-guarded in `util.terminal`. `vim.deprecate` never sees it,
   because it is a Vim function. A static check, if built, must accept it inside that
@@ -147,11 +144,11 @@ can change to remove it. Otherwise it is an error only in the CI deprecation che
 - The harness asserts that `!`, the `cm` build and the `ct` run open a `terminal`
   buffer, on every leg. Done 2026-11-18.
 - The harness runs once with telescope-fzf-native loaded. Without that, a sorter bug
-  broke the picker in the owner's config, and the harness did not notice.
+  broke the picker in a configuration that loads it, and the harness did not notice.
 - The README's Neovim floor moves from 0.11 to 0.10.4 only after the floor leg is
   green in CI. The README lists the four pairs and claims nothing wider. T12 is closed by this.
 
-## Evidence from this session
+## Evidence, 2026-11-18
 
 Local runs, not CI. The 25/25 rows predate the terminal fix, which added four checks. After it, every leg passes all 29 LSP checks and all 6 config checks. The deprecation counts were measured before the fix.
 
@@ -168,15 +165,15 @@ about the Telescope pairs. The harness does not check what a terminal source
 opens, so these runs say nothing about terminal buffers on 0.10.4 (see
 Constraints).
 
-## Minor calls (mine, for the builder to keep or change)
+## Minor calls, for the builder to keep or change
 
 - Neovim downloads use `rhysd/action-setup-vim`, pinned to a release tag.
-- Formatting always uses the owner's own `.stylua.toml` (column width 100, sorted
-  requires, parentheses kept), copied into the repo. The owner's CLAUDE.md says they format with
-  stylua. The formatting pass with that config changed 10 Lua files, and it is its own commit. `.stylua.toml` in the repo is the owner's file, so `stylua --check .` uses it.
+- Formatting uses the repository's `.stylua.toml` (column width 100, sorted requires,
+  parentheses kept). The formatting pass with that config changed 10 Lua files, and it is its
+  own commit. `stylua --check .` uses the same file.
 - The weekly job covers Telescope `master` and Neovim nightly, on each OS. It runs
   once a week and blocks nothing.
-- Linting: `.luacheckrc` (LuaJIT, lines up to 100 columns, like the owner's stylua).
+- Linting: `.luacheckrc` (LuaJIT, lines up to 100 columns, like `.stylua.toml`).
   `make lint` runs `stylua --check .` and luacheck over `lua` and `tests`. `make format`
   runs stylua.
 
@@ -203,7 +200,7 @@ the PR matrix widened to every OS, plus nightly.
 | The four pairs on each OS | 4 pairs × ubuntu, macos, windows = 12 | yes |
 | stylua check | 1 | yes |
 | Doc check | 1, once vimdoc exists (T6) | yes |
-| Manual smoke test | the owner, checklist below | yes |
+| Manual smoke test | the maintainer, checklist below | yes |
 | Weekly scheduled job: drift, and nightly Neovim × Telescope master on each OS | scheduled | no |
 
 Runner packages: on each OS, install clangd, cmake, ninja, ctest and ripgrep
@@ -211,11 +208,11 @@ with that OS's package manager. Pin the clangd version, because it shapes the
 LSP session's results; the probes used clangd 23.1.
 
 A release claims only what passed. If one OS leg fails, the release is blocked.
-The owner can waive an OS, with the reason written into the CHANGELOG and the
+The maintainer can waive an OS, with the reason written into the CHANGELOG and the
 README. That is a decision made for one release, not a default.
 
-Manual smoke test, on the release candidate, with the owner's own Neovim
-config:
+Manual smoke test, on the release candidate, with a real, full Neovim
+configuration:
 
 1. Install the RC tag from a fresh clone.
 2. `:checkhealth controlk` shows no error (needs T5 first).
@@ -283,9 +280,8 @@ tag stays.
 - A throwaway tag whose `version.lua` does not match is refused by the workflow.
 - The checklist is followed end to end once, on the first real RC.
 
-### Decisions for the owner
+### Decisions
 
-- Windows and macOS block the release. (My pick.)
-- Nightly runs once a week in the scheduled job, not in the release gate. (Adopted
-  from the owner's suggestion.)
+- Windows and macOS block the release.
+- Nightly runs once a week in the scheduled job, not in the release gate.
 - The pre-1.0 Semver rules above.
