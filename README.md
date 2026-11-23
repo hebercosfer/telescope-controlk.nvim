@@ -315,6 +315,10 @@ A live grep as a source of your own (see `:h controlk-custom-sources`): `g patte
 for `pattern` in the files that match `*.lua`. Two spaces separate the pattern from the glob, and
 the glob is optional. It searches from the project root, and Enter opens the match.
 
+The multigrep idea, a pattern and a glob split on two spaces, comes from TJ DeVries' video
+[Advanced telescope.nvim Examples](https://www.youtube.com/watch?v=xdXE1tOT-qg), where it is a
+Telescope picker; here it is a controlk source.
+
 ```lua
 -- The rg run for the previous keystroke, killed when a newer query starts.
 local running
