@@ -824,6 +824,36 @@ local function config_session()
   fp, fb = open_picker(FIX .. "/proj/src/widget.h")
   check("files.hidden lists them", has_display(type_text(fp, fb, "p dotnote"), ".dotnote"))
   close(fb)
+
+  say("== a source that misbehaves (T20)")
+  notices = {}
+  require("controlk").setup({
+    default_sources = { "files", "broken" },
+    sources = {
+      broken = {
+        prefix = "zz",
+        title = "Broken source",
+        tag = "broken",
+        items = function()
+          error("boom")
+        end,
+      },
+    },
+  })
+  fp, fb = open_picker(FIX .. "/proj/src/widget.h")
+  rows = type_text(fp, fb, "widget")
+  check(
+    "a source that errors leaves the other default sources listed",
+    has_tag(rows, "file") and has_display(rows, "widget.h"),
+    tostring(#rows) .. " rows"
+  )
+  check("and shows a hint naming it", has_display(rows, "broken failed: boom"))
+  check(
+    "and notifies the error",
+    #notices >= 1 and notices[#notices]:find("source broken failed", 1, true) ~= nil,
+    notices[#notices]
+  )
+  close(fb)
   require("controlk").setup({
     prefixes = { lsp_classes = "C", eval = false },
     default_sources = { "files" },
