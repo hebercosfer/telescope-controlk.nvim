@@ -12,7 +12,7 @@ a feature or a breaking change is a minor version, a fix is a patch.
 - One Telescope picker, `:Telescope controlk`, that switches source by prefix: open buffers `b`,
   project files `p`, file system `f`, line `l`, help `?`, Ex commands `:`, marks `'`, Lua value
   `=`, run Lua `lua`, shell `!`, web search `w`, workspace symbols `s`, classes `c`, functions
-  `m`, document symbols `.`, references under the cursor `r`, CMake targets `cm`, target
+  `m`, document symbols `.`, references to a symbol by name `r`, CMake targets `cm`, target
   definitions `cmo` and CTest tests `ct`.
 - With text and no prefix, the locator browses the file system; Enter on a directory goes into it.
 - The locator opens on the list of prefixes and shows only prefixes until a space is typed.

@@ -296,51 +296,94 @@ M.lsp_symbols = workspace_source("Workspace symbols", "sym", M.kinds.symbols)
 M.lsp_classes = workspace_source("Workspace classes", "class", M.kinds.classes)
 M.lsp_functions = workspace_source("Workspace functions", "func", M.kinds.functions)
 
---- References to the symbol under the cursor in the window the locator was opened from. The
---- servers answer once per session; what is typed then fuzzy-filters the rows.
+--- The workspace symbols named `name`, one per place: { client = ..., location = ... }.
+--- `name` is a symbol's own name (`Widget`), or qualified by its container (`ui::Widget`,
+--- `ui.Widget`), as servers such as clangd report it.
+local function named(results, name)
+  local found, seen = {}, {}
+  for _, result in ipairs(results) do
+    for _, symbol in ipairs(result.symbols) do
+      local location = symbol.location
+      local container = symbol.containerName
+      local matches = symbol.name == name
+        or (container and container ~= "")
+          and (container .. "::" .. symbol.name == name or container .. "." .. symbol.name == name)
+      -- A WorkspaceSymbol may come without a range (LSP 3.17); there is no position to ask.
+      if matches and location and location.uri and location.range then
+        local start = location.range.start
+        local key = ("%s:%d:%d"):format(location.uri, start.line, start.character)
+        if not seen[key] then
+          seen[key] = true
+          table.insert(found, { client = result.client, location = location })
+        end
+      end
+    end
+  end
+  return found
+end
+
+--- References to the symbol named by the text after the prefix: `r Widget`. The servers'
+--- workspace symbols with exactly that name give the places to ask for references from; a class
+--- and its constructor both count, and a reference to both is listed once. Nothing depends on
+--- the cursor, so a selection put in the prompt (T16) works the same as typing the name.
 M.lsp_references = {
-  title = "References to the symbol under the cursor",
+  title = "References to a symbol, by name",
   tag = "ref",
-  items = function(_, ctx, done)
-    util.memo(ctx, "references", function(finish)
-      local method = "textDocument/references"
-      local clients = vim.lsp.get_clients({ bufnr = ctx.origin_buf, method = method })
-      if #clients == 0 then
-        return finish({
-          util.hint(("no LSP server attached to this buffer supports %s"):format(method), "ref"),
-        })
-      end
-      local items, waiting = {}, #clients
-      for _, client in ipairs(clients) do
-        local params = vim.lsp.util.make_position_params(ctx.origin_win, client.offset_encoding)
-        params.context = { includeDeclaration = true }
-        client_request(client, method, params, function(err, result)
-          if not err and type(result) == "table" then
-            local found = vim.lsp.util.locations_to_items(result, client.offset_encoding)
-            for _, item in ipairs(found) do
-              table.insert(items, {
-                text = vim.trim(item.text or ""),
-                -- With the column: two references on one line would look the same.
-                detail = ("%s:%d:%d"):format(
-                  vim.fn.fnamemodify(item.filename, ":~:."),
-                  item.lnum,
-                  item.col
-                ),
-                path = item.filename,
-                lnum = item.lnum,
-                col = item.col,
-              })
+  items = function(query, ctx, done)
+    local name = vim.trim(query)
+    if name == "" then
+      return done({ util.hint("type a symbol name to list its references", "ref") })
+    end
+    util.memo(ctx, "references:" .. name, function(finish)
+      request(ctx, "workspace/symbol", { query = name }, function(results, err, clients)
+        local targets = named(results, name)
+        if #targets == 0 then
+          local hints = M.status_hints(clients, {}, "ref", nil)
+          table.insert(hints, 1, util.hint(err or ("no symbol named %s"):format(name), "ref"))
+          return finish(hints)
+        end
+        local items, seen, waiting = {}, {}, #targets
+        for _, target in ipairs(targets) do
+          local client = target.client
+          local params = {
+            textDocument = { uri = target.location.uri },
+            position = target.location.range.start,
+            context = { includeDeclaration = true },
+          }
+          client_request(client, "textDocument/references", params, function(e, result)
+            if not e and type(result) == "table" then
+              local found = vim.lsp.util.locations_to_items(result, client.offset_encoding)
+              for _, item in ipairs(found) do
+                local key = ("%s:%d:%d"):format(item.filename, item.lnum, item.col)
+                if not seen[key] then
+                  seen[key] = true
+                  table.insert(items, {
+                    text = vim.trim(item.text or ""),
+                    -- With the column: two references on one line would look the same.
+                    detail = ("%s:%d:%d"):format(
+                      vim.fn.fnamemodify(item.filename, ":~:."),
+                      item.lnum,
+                      item.col
+                    ),
+                    path = item.filename,
+                    lnum = item.lnum,
+                    col = item.col,
+                    -- The server found them by name; fuzzy matching must keep every row.
+                    passthrough = true,
+                  })
+                end
+              end
             end
-          end
-          waiting = waiting - 1
-          if waiting == 0 then
-            if #items == 0 then
-              items = { util.hint("no references to the symbol under the cursor", "ref") }
+            waiting = waiting - 1
+            if waiting == 0 then
+              if #items == 0 then
+                items = { util.hint(("no references to %s"):format(name), "ref") }
+              end
+              finish(items)
             end
-            finish(items)
-          end
-        end, ctx.origin_buf)
-      end
+          end)
+        end
+      end)
     end, done)
   end,
 }

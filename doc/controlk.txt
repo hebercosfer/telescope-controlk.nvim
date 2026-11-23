@@ -93,7 +93,8 @@ Enter does the action listed. "Needs" lists what a source requires.
   m           workspace functions, methods, constructors jump            LSP
   .           symbols in the current document            jump            LSP with
                                                                          textDocument/documentSymbol
-  r           references to the symbol under the cursor  jump            LSP with
+  r           references to a symbol, by name            jump            LSP with
+                                                                         workspace/symbol and
                                                                          textDocument/references
   cm          CMake build targets                        builds in       cmake
                                                          terminal
@@ -201,10 +202,13 @@ Workspace functions (`m`)                     *controlk-source-lsp_functions*
     |controlk-lsp| when results seem to be missing.
 
 References (`r`)                              *controlk-source-lsp_references*
-    `textDocument/references` for the symbol under the cursor in the window
-    the locator was opened from, its declaration included. The servers
-    answer once; what you type then fuzzy-filters the rows. It needs a
-    server attached to that buffer.
+    `r Widget` lists the references to the symbol named `Widget`, its
+    declaration included. The project's servers are asked for workspace
+    symbols with exactly that name, `ui::Widget` for one in a namespace, and
+    each one's references are listed; a class and its constructor both
+    count, and a line that refers to both shows once. The cursor plays no
+    part, so it works from any buffer of the project. A name with no symbol
+    says so; `s Widget` finds names that are close.
 
 Symbols in the current document (`.`)          *controlk-source-lsp_document*
     `textDocument/documentSymbol` for the current buffer, fuzzy matched. It
