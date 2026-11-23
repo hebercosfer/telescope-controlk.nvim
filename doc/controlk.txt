@@ -216,7 +216,8 @@ the main case, and the defaults above follow clangd. What it adds:
   in a `build/` directory under each of them. CMake writes it only with
   `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`; the "Configure project" item of the
   CMake sources passes it. A build directory with another name needs
-  `--compile-commands-dir=<dir>` in clangd's command.
+  `--compile-commands-dir=<dir>` in clangd's command. |controlk-health|
+  checks where it is.
 - The index is saved in `.cache/clangd/index` in the project, so only the
   first start is partial; later sessions are complete at once.
 - A reply holds at most 100 symbols (`--limit-results`), which is why
@@ -424,11 +425,19 @@ invalid user sources) are reported as warnings when the extension is set up.
 `:Telescope controlk`
     Open the locator. Same as calling the Lua function below.
 
+`:checkhealth controlk`                                      *controlk-health*
+    Checks the Neovim version, Telescope and plenary, the tools the sources
+    use (rg or git, cmake, ctest), your options, and, for the current
+    project, whether clangd can find `compile_commands.json` and which
+    language servers answer workspace symbols. Run it first when a source
+    lists nothing.
+
 Lua:
 >lua
     require("controlk").open(opts)   -- opts: telescope picker options
     require("controlk").setup(opts)  -- the same table as extensions.controlk
     require("controlk").config()     -- the resolved configuration
+    require("controlk").errors()     -- what the last setup warned about
 <
 
 vim:tw=78:ts=8:ft=help:norl:

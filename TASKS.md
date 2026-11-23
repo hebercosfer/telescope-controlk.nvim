@@ -35,7 +35,9 @@ Ordered by value. Each item lists its acceptance check.
 - **T4. Commit the rest of the work.** Done in the second commit, with the terminal fix and the help file. Stage with `git add -N` for new files. Acceptance:
   `git ls-tree -r HEAD --name-only | wc -l` shows every file in the project, and both test suites
   still pass on that commit.
-- **T5. Add `:checkhealth controlk`.** Create `lua/controlk/health.lua` using `vim.health`. Report:
+- **T5. Add `:checkhealth controlk`.** Done 2026-11-20: also checks the Neovim floor, Telescope
+  and plenary, the locator key, where clangd finds `compile_commands.json`, and the running
+  servers. Original text: create `lua/controlk/health.lua` using `vim.health`. Report:
   `rg` or `git` available; `cmake`, `ctest` and `cmake` with Ninja available; any configuration
   warnings from `config.resolve`. Acceptance: `nvim --headless -c "checkhealth controlk" -c "qa"`
   reports OK or WARN lines and no errors.
