@@ -10,12 +10,13 @@ a feature or a breaking change is a minor version, a fix is a patch.
 ### Added
 
 - One Telescope picker, `:Telescope controlk`, that switches source by prefix: open buffers `b`,
-  project files `p`, file system `f`, line `l`, help `h`, Ex commands `:`, marks `'`, Lua value
+  project files `p`, file system `f`, line `l`, help `?`, Ex commands `:`, marks `'`, Lua value
   `=`, run Lua `lua`, shell `!`, web search `w`, workspace symbols `s`, classes `c`, functions
   `m`, document symbols `.`, references under the cursor `r`, CMake targets `cm`, target
   definitions `cmo` and CTest tests `ct`.
-- With no prefix, the locator browses the file system; Enter on a directory goes into it.
-- `?` lists the prefixes, and a partly typed prefix suggests the prefixes it could become.
+- With text and no prefix, the locator browses the file system; Enter on a directory goes into it.
+- The locator opens on the list of prefixes and shows only prefixes until a space is typed.
+  `?` alone shows the list too; `? text` searches help, `:help`'s own matches first, then fuzzy.
 - `:` runs what you typed as an Ex command from its first row, as `!` does for the shell. After
   a command and a space, the list completes its arguments as `<Tab>` does (`: set tabst`).
 - `lua` runs Lua as `:lua` does, and completes it as `<Tab>` does. `=` still shows a value.
@@ -25,7 +26,7 @@ a feature or a breaking change is a minor version, a fix is a patch.
   `:h controlk-custom-sources`. A source that raises an error, calls back twice or never calls
   back cannot break the locator: it shows as a hint, and the default view lists the others.
 - Styles: any Telescope layout or theme, and `cutie`, after Qt Creator's locator (bottom left,
-  60 columns by default, list hidden until you type).
+  60 columns by default).
 - The `Direct` web engine opens the typed address itself.
 - `files = { hidden, ignored }` lets `p` list dotfiles and git-ignored files.
 - Workspace symbols are asked from the project's language servers even from a buffer they are

@@ -80,15 +80,22 @@ local function make_sorter(opts)
 end
 
 local function run_default(query, ctx, done)
-  -- A partly typed prefix ("c") lists the prefixes it could become before the usual results.
-  local collected = prefixes.matching(query, ctx.config.prefix_map, ctx.config.source_map)
+  -- Until a space is typed, only prefixes: every prefix for an empty prompt, the prefixes it
+  -- could become for a partly typed one ("c" gives c, cm, cmo, ct). Text that can become no
+  -- prefix ("con", "src/", "42") searches the default sources.
+  if not query:find("%s") then
+    local cfg = ctx.config
+    local rows = query == "" and prefixes.rows(cfg.prefix_map, cfg.source_map)
+      or prefixes.matching(query, cfg.prefix_map, cfg.source_map)
+    if #rows > 0 then
+      return done(rows)
+    end
+  end
   local sources = vim.tbl_map(function(id)
     return ctx.config.source_map[id]
   end, ctx.config.default_sources)
   -- All at once, with a time limit, so one slow or broken source does not hide the others.
-  util.collect(sources, query, ctx, function(items)
-    done(vim.list_extend(collected, items))
-  end, util.DEFAULT_TIMEOUT_MS)
+  util.collect(sources, query, ctx, done, util.DEFAULT_TIMEOUT_MS)
 end
 
 local function finder_for(id, ctx)
@@ -150,56 +157,6 @@ local function cutie_window_options(cfg)
   end
 end
 
--- Hides or shows cutie's list and preview, borders included. The prompt always stays.
-local function set_cutie_hidden(picker, hidden)
-  for _, win in ipairs({
-    picker.results_win,
-    picker.results_border and picker.results_border.winid,
-    picker.preview_win,
-    picker.preview_border and picker.preview_border.winid,
-  }) do
-    if win and vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_set_config(win, { hide = hidden })
-    end
-  end
-end
-
--- Sets up cutie for one prompt buffer: the list and preview hidden while the prompt is empty,
--- also after a resize. Runs for every find, so a picker rebuilt by :Telescope resume gets it.
-local function attach_cutie(prompt_bufnr)
-  local function current()
-    local p = action_state.get_current_picker(prompt_bufnr)
-    if p and vim.api.nvim_win_is_valid(p.prompt_win) then
-      return p
-    end
-  end
-  local p = current()
-  if p then
-    set_cutie_hidden(p, p:_get_prompt() == "")
-  end
-  -- Telescope's own VimResized handler re-sets every window, and a preview it drops and brings
-  -- back is a new, visible window. Ours runs after it and hides them again.
-  local group = vim.api.nvim_create_augroup("controlk_cutie_" .. prompt_bufnr, {})
-  vim.api.nvim_create_autocmd("VimResized", {
-    group = group,
-    callback = function()
-      vim.schedule(function()
-        local live = current()
-        if live then
-          set_cutie_hidden(live, live:_get_prompt() == "")
-        end
-      end)
-    end,
-  })
-  vim.api.nvim_create_autocmd("BufWipeout", {
-    group = group,
-    buffer = prompt_bufnr,
-    callback = function()
-      vim.api.nvim_del_augroup_by_id(group)
-    end,
-  })
-end
-
 -- Applies the style to the picker options. Telescope's own layout_strategy (or a theme= on the
 -- command line, which sets one) wins: it is what Telescope users already type.
 ---@return table opts
@@ -233,9 +190,7 @@ end
 ---@param opts table telescope picker options
 ---@param cfg table resolved controlk configuration
 function M.open(opts, cfg)
-  local style
-  opts, style = apply_style(opts, cfg)
-  local is_cutie = style == "cutie" and opts.get_window_options ~= nil
+  opts = apply_style(opts, cfg)
   local origin_buf = vim.api.nvim_get_current_buf()
   local ctx = {
     config = cfg,
@@ -247,22 +202,7 @@ function M.open(opts, cfg)
   }
 
   local current = DEFAULT
-  -- The prompt buffer of the picker on screen. :Telescope resume builds a new picker from this
-  -- one's options, so the callbacks look it up instead of holding the first picker.
-  local live_prompt
-  local function cutie_empty(prompt_bufnr)
-    if not is_cutie then
-      return false
-    end
-    local p = action_state.get_current_picker(prompt_bufnr)
-    return p ~= nil and p:_get_prompt() == ""
-  end
-
   local function on_input(prompt)
-    local live = is_cutie and live_prompt and action_state.get_current_picker(live_prompt)
-    if live then
-      set_cutie_hidden(live, prompt == "")
-    end
     local id, query = parse.parse(prompt, cfg.prefix_map)
     id = id or DEFAULT
     local result = { prompt = query }
@@ -279,25 +219,8 @@ function M.open(opts, cfg)
     sorter = make_sorter(opts),
     previewer = conf.grep_previewer(opts),
     on_input_filter_cb = on_input,
-    attach_mappings = function(bufnr)
-      if is_cutie then
-        live_prompt = bufnr
-        -- After find has registered the picker for this buffer.
-        vim.schedule(function()
-          if vim.api.nvim_buf_is_valid(bufnr) then
-            attach_cutie(bufnr)
-          end
-        end)
-        -- With an empty cutie prompt nothing is visible, so the open and split keys act on
-        -- nothing rather than on a hidden row.
-        for _, name in ipairs({ "select_horizontal", "select_vertical", "select_tab" }) do
-          actions[name]:replace_if(cutie_empty, function() end)
-        end
-      end
+    attach_mappings = function()
       actions.select_default:replace(function(prompt_bufnr)
-        if cutie_empty(prompt_bufnr) then
-          return
-        end
         local entry = action_state.get_selected_entry()
         -- Nothing to act on: an empty list, or a hint ("type at least 1 character", a Lua
         -- error). Enter opens the help of the source the prompt selects, so the user learns
@@ -338,10 +261,6 @@ function M.open(opts, cfg)
   -- would stop switching sources when a prefix is typed.
   picker.on_input_filter_cb = on_input
   picker:find()
-  if is_cutie then
-    -- At once, so the list never flashes on open; attach_cutie repeats it after find.
-    set_cutie_hidden(picker, true)
-  end
 end
 
 return M

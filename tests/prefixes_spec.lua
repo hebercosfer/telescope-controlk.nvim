@@ -1,10 +1,12 @@
 local config = require("controlk.config")
+local help = require("controlk.sources.help")
 local prefixes = require("controlk.sources.prefixes")
 
+-- `?` alone: the help source with an empty query lists the prefixes.
 local function list(user)
   local cfg = config.resolve(user)
   local items
-  prefixes.items("", { config = cfg }, function(result)
+  help.items("", { config = cfg, cache = {} }, function(result)
     items = result
   end)
   return items
@@ -18,18 +20,18 @@ local function find(items, prefix)
   end
 end
 
-describe("prefixes source", function()
-  it("is reached with ? and help tags move to h", function()
+describe("? alone", function()
+  it("is help, and h is no prefix", function()
     local cfg = config.resolve({})
-    assert.are.equal("prefixes", cfg.prefix_map["?"])
-    assert.are.equal("help", cfg.prefix_map["h"])
+    assert.are.equal("help", cfg.prefix_map["?"])
+    assert.is_nil(cfg.prefix_map["h"])
   end)
 
-  it("lists every other prefix once, with its source's title", function()
+  it("lists every prefix once, itself included, with its source's title", function()
     local items = list()
     local cfg = config.resolve({})
-    assert.are.equal(vim.tbl_count(cfg.prefix_map) - 1, #items)
-    assert.is_nil(find(items, "?"))
+    assert.are.equal(vim.tbl_count(cfg.prefix_map), #items)
+    assert.is_not_nil(find(items, "?"))
     assert.are.equal("Workspace classes", find(items, "c").text)
     assert.are.equal("CMake build targets", find(items, "cm").text)
   end)
@@ -56,8 +58,9 @@ describe("prefixes source", function()
   end)
 
   it("keeps working when ? itself is moved", function()
-    local items = list({ prefixes = { prefixes = "??" } })
-    assert.is_nil(find(items, "??"))
+    local items = list({ prefixes = { help = "??" } })
+    assert.is_not_nil(find(items, "??"))
+    assert.is_nil(find(items, "?"))
     assert.is_not_nil(find(items, "b"))
   end)
 end)
@@ -88,11 +91,11 @@ describe("prefixes.matching", function()
     assert.are.equal("CTest tests", row.text)
   end)
 
-  it("follows custom and removed prefixes, and never suggests itself", function()
+  it("follows custom and removed prefixes", function()
     local m = config.resolve({
-      prefixes = { lsp_classes = "cl", cmake_tests = false, prefixes = "c?" },
+      prefixes = { lsp_classes = "cl", cmake_tests = false, help = "c?" },
     }).prefix_map
-    assert.are.same({ "cl", "cm", "cmo" }, tags(prefixes.matching("c", m)))
+    assert.are.same({ "c?", "cl", "cm", "cmo" }, tags(prefixes.matching("c", m)))
   end)
 end)
 
