@@ -177,18 +177,117 @@ describe("lsp symbol columns", function()
   end)
 end)
 
-describe("lsp references", function()
-  it("asks for an attached server", function()
+describe("lsp references by name", function()
+  local real = vim.lsp.get_clients
+  local file = vim.fn.tempname() .. ".cpp"
+  local uri = vim.uri_from_fname(file)
+  local asked
+  local function loc(line, character)
+    return {
+      uri = uri,
+      range = {
+        start = { line = line, character = character },
+        ["end"] = { line = line, character = character + 6 },
+      },
+    }
+  end
+  local symbols = {
+    { name = "Widget", kind = 5, containerName = "ui", location = loc(0, 6) },
+    { name = "Widget", kind = 9, containerName = "ui::Widget", location = loc(1, 2) },
+    { name = "WidgetFactory", kind = 5, location = loc(3, 6) },
+  }
+  -- References by the position asked: the class and its constructor share line 4.
+  local refs = {
+    ["0:6"] = { loc(0, 6), loc(4, 2) },
+    ["1:2"] = { loc(1, 2), loc(4, 2) },
+  }
+  -- Answers as client:request (0.11+) and as client.request (0.10).
+  local client = { id = 7, name = "fake", root_dir = "/work/proj", offset_encoding = "utf-16" }
+  client.request = function(a, b, c, d)
+    local method, params, handler
+    if type(a) == "table" then
+      method, params, handler = b, c, d
+    else
+      method, params, handler = a, b, c
+    end
+    table.insert(asked, method)
+    if method == "workspace/symbol" then
+      handler(nil, symbols)
+    else
+      local p = params.position
+      handler(nil, refs[p.line .. ":" .. p.character] or {})
+    end
+    return true, 1
+  end
+
+  before_each(function()
+    asked = {}
+    vim.fn.writefile({
+      "class Widget {",
+      "  Widget();",
+      "};",
+      "class WidgetFactory {};",
+      "  Widget w;",
+    }, file)
+    vim.lsp.get_clients = function(filter)
+      return filter.bufnr and {} or { client }
+    end
+  end)
+  after_each(function()
+    vim.lsp.get_clients = real
+    vim.fn.delete(file)
+  end)
+
+  local function list(query)
     local got
-    lsp.lsp_references.items("", {
+    lsp.lsp_references.items(query, {
       origin_buf = vim.api.nvim_create_buf(false, true),
-      origin_win = vim.api.nvim_get_current_win(),
+      root = "/work/proj",
       cache = {},
+      config = { lsp = { min_query = 1, result_limit = 100 } },
     }, function(items)
       got = items
     end)
+    return got
+  end
+
+  it("asks for a name when none is typed, without asking a server", function()
+    local got = list("")
     assert.are.equal(1, #got)
     assert.is_true(got[1].hint)
-    assert.matches("textDocument/references", got[1].text)
+    assert.are.same({}, asked)
+  end)
+
+  it("lists the references to every symbol named exactly so, once each", function()
+    local got = list("Widget")
+    local places = vim.tbl_map(function(item)
+      return item.lnum .. ":" .. item.col
+    end, got)
+    -- Line 4 is a reference to both the class and the constructor: listed once.
+    assert.are.same({ "1:7", "5:3", "2:3" }, places)
+    assert.is_true(got[1].passthrough)
+    assert.are.equal("ref", lsp.lsp_references.tag)
+    -- WidgetFactory is not named Widget: its position is never asked.
+    assert.are.same(
+      { "workspace/symbol", "textDocument/references", "textDocument/references" },
+      asked
+    )
+  end)
+
+  it("takes a qualified name", function()
+    local got = list("ui::Widget")
+    assert.are.same(
+      { "1:7", "5:3" },
+      vim.tbl_map(function(item)
+        return item.lnum .. ":" .. item.col
+      end, got)
+    )
+  end)
+
+  it("says so when no symbol has that name", function()
+    local got = list("Widg")
+    assert.are.equal(1, #got)
+    assert.is_true(got[1].hint)
+    assert.matches("Widg", got[1].text)
   end)
 end)

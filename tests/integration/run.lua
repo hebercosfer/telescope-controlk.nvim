@@ -653,8 +653,8 @@ local function lsp_and_cmake()
 
   vim.cmd.edit(origin)
   vim.fn.cursor(1, 1)
-  vim.fn.search("\\<Widget::Widget\\>")
-  local refs_from = vim.api.nvim_win_get_cursor(0)
+  -- T21: references by name. The cursor stays on line 1, on no symbol: it plays no part.
+  vim.fn.cursor(1, 1)
   -- The harness started clangd for widget.h only; a real config attaches it to every C++ buffer.
   local clangd = vim.lsp.get_clients({ name = "clangd" })[1]
   if clangd then
@@ -664,13 +664,27 @@ local function lsp_and_cmake()
     end, 50)
   end
   local rp, rb = open_picker(origin)
-  local refs = type_text(rp, rb, "r ")
-  close(rb)
+  local refs = type_text(rp, rb, "r Widget")
+  local files = {}
+  for _, row in ipairs(refs) do
+    if row.value.path then
+      files[vim.fs.basename(row.value.path)] = true
+    end
+  end
   check(
-    "r lists the references to the symbol under the cursor",
-    only_tag(refs, "ref") and #refs >= 2,
-    ("%d rows from %d:%d"):format(#refs, refs_from[1], refs_from[2])
+    "r Widget lists the references to Widget, wherever the cursor is",
+    only_tag(refs, "ref") and #refs >= 2 and vim.tbl_count(files) >= 2,
+    ("%d rows in %s"):format(#refs, table.concat(vim.tbl_keys(files), ", "))
   )
+  local none = type_text(rp, rb, "r ")
+  check("r alone asks for a name", #none == 1 and none[1].value.hint == true)
+  local unknown = type_text(rp, rb, "r NoSuchSymbolAnywhere")
+  check(
+    "r with an unknown name says so",
+    #unknown == 1 and unknown[1].value.text:find("no symbol named", 1, true) ~= nil,
+    unknown[1] and unknown[1].value.text
+  )
+  close(rb)
 
   vim.cmd.edit(FIX .. "/proj/src/main.cpp")
   vim.api.nvim_buf_set_mark(0, "Q", 2, 0, {})
