@@ -276,3 +276,29 @@ describe("util.collect", function()
     assert.are.same({}, got)
   end)
 end)
+
+describe("util.act", function()
+  local home_before = vim.env.HOME
+  local home
+  before_each(function()
+    home = vim.fn.tempname()
+    vim.fn.mkdir(home, "p")
+    vim.env.HOME = home
+    vim.fn.writefile({ "one", "two", "three" }, home .. "/notes.txt")
+  end)
+  after_each(function()
+    vim.env.HOME = home_before
+    vim.fn.delete(home, "rf")
+  end)
+
+  -- getmarklist() gives a global mark's file as "~/...", for any file under the home directory.
+  it("opens a path written from the home directory", function()
+    util.act({ path = "~/notes.txt", lnum = 2, col = 1 })
+    assert.are.equal(
+      vim.fs.normalize(home .. "/notes.txt"),
+      vim.fs.normalize(vim.api.nvim_buf_get_name(0))
+    )
+    assert.are.equal(3, vim.api.nvim_buf_line_count(0))
+    assert.are.equal(2, vim.api.nvim_win_get_cursor(0)[1])
+  end)
+end)
