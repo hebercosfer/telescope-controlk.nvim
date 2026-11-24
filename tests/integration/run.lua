@@ -237,6 +237,24 @@ local function cutie_checks()
     picker.sorting_strategy == "descending",
     picker.sorting_strategy
   )
+  -- What is drawn: the list runs upward from the prompt, best first, and the selection
+  -- starts on the row next to the prompt.
+  type_text(picker, prompt, "? mark")
+  local drawn = vim.api.nvim_buf_get_lines(picker.results_bufnr, 0, -1, false)
+  local n = #drawn
+  local selected = state.get_selected_entry()
+  check(
+    "cutie draws the best rows bottom up, from the prompt",
+    n >= 2
+      and drawn[n]:find("Marks", 1, true) ~= nil
+      and drawn[n - 1]:find("controlk-source-marks", 1, true) ~= nil,
+    vim.inspect({ drawn[n - 1], drawn[n] })
+  )
+  check(
+    "cutie's selection starts on the row next to the prompt",
+    selected ~= nil and selected.value.tag == "'" and picker:get_selection_row() == n - 1,
+    vim.inspect({ selected and selected.value.tag, picker:get_selection_row(), n })
+  )
   close(prompt)
 
   -- :Telescope resume builds a new picker from the cached one; it must work the same way.
