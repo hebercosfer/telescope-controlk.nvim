@@ -59,7 +59,7 @@ Qt Creator uses Ctrl+K, but in Neovim Ctrl+H/J/K/L move between splits, so the l
 | `p` | files in the project | open | rg or git |
 | `l` | line, or `line:column`, in the current buffer | jump | |
 | `f` | file system from the project root, prefix match on names | open, or enter the directory | |
-| `?` | alone, the prefixes in this table; with text, Neovim help tags | puts the prefix in the prompt, or opens the help | |
+| `?` | alone, the prefixes in this table; with text, the prefixes it names, their help, then Neovim help tags | puts the prefix in the prompt, or opens the help | |
 | `:` | Ex commands; the first row runs what you typed (`: w`, `: 42`), and after a space the list completes the arguments as `<Tab>` does | runs it (output and errors as notifications), or fills the prompt | |
 | `'` | marks | jump | |
 | `=` | Lua expression | copies the result | |
@@ -81,9 +81,11 @@ the prompt with that prefix and a space and switches to its source, so Enter on 
 the prompt, ready for a class name. Text that can become no prefix (`con`, `src/`, `42`) searches
 the default view below.
 
-`?` alone shows the same list. `? text` searches the help: first what `:help text` would offer, in
-Neovim's own order, then every other tag, fuzzy matched, so `? bufgetlines` still finds
-`nvim_buf_get_lines()`.
+`?` alone shows the same list. `? text` first lists the prefixes it names (the text is the prefix,
+or the source's title holds it: `? cmake` gives `cm` and `cmo`), which switch to that source, then
+their sections of controlk's help (`? mark` gives `controlk-source-marks`). Then it searches the
+help: first what `:help text` would offer, in Neovim's own order, then every other tag, fuzzy
+matched, so `? bufgetlines` still finds `nvim_buf_get_lines()`.
 
 With text and no prefix, the locator browses the file system like `f`: it opens on the project root (the
 git root of the current buffer), narrows by the start of each name, and Enter on a directory goes
