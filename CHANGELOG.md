@@ -16,7 +16,8 @@ a feature or a breaking change is a minor version, a fix is a patch.
   definitions `cmo` and CTest tests `ct`.
 - With text and no prefix, the locator browses the file system; Enter on a directory goes into it.
 - The locator opens on the list of prefixes and shows only prefixes until a space is typed.
-  `?` alone shows the list too; `? text` searches help, `:help`'s own matches first, then fuzzy.
+  `?` alone shows the list too. `? text` lists the prefixes it names and their sections of
+  controlk's help first, then searches help, `:help`'s own matches first, then fuzzy.
 - `:` runs what you typed as an Ex command from its first row, as `!` does for the shell. After
   a command and a space, the list completes its arguments as `<Tab>` does (`: set tabst`).
 - `lua` runs Lua as `:lua` does, and completes it as `<Tab>` does. `=` still shows a value.
