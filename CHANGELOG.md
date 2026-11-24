@@ -7,6 +7,8 @@ a feature or a breaking change is a minor version, a fix is a patch.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-24
+
 ### Added
 
 - One Telescope picker, `:Telescope controlk`, that switches source by prefix: open buffers `b`,
