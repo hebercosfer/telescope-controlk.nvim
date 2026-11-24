@@ -789,6 +789,13 @@ local function lsp_and_cmake()
   )
   close(rb)
 
+  -- Mark Z's path holds a Q too, as a leftover shada mark's can. It ties with Q in fuzzy
+  -- matching, and Telescope breaks the tie by the shorter line, as mark 0 once won on CI.
+  -- The mark the query names must win.
+  local quirks = FIX .. "/Q.txt"
+  vim.fn.writefile({ "one", "two" }, quirks)
+  vim.cmd.edit(quirks)
+  vim.api.nvim_buf_set_mark(0, "Z", 2, 0, {})
   vim.cmd.edit(FIX .. "/proj/src/main.cpp")
   vim.api.nvim_buf_set_mark(0, "Q", 2, 0, {})
   vim.cmd.edit(origin)
