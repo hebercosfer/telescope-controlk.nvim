@@ -918,6 +918,36 @@ local function config_session()
   tag = help_after("zzqqxx")
   check("an empty default view opens its help", tag == "controlk-default-view", tag)
 
+  -- `? text`: the prefixes it names, then their sections of controlk's help, then the tags.
+  local hp, hb = open_picker(FIX .. "/proj/src/widget.h")
+  local hrows = type_text(hp, hb, "? mark")
+  check(
+    "? text lists the matching prefix, then its help",
+    hrows[1]
+      and hrows[1].value.tag == "'"
+      and hrows[2]
+      and hrows[2].value.text == "controlk-source-marks",
+    hrows[2] and hrows[2].value.text
+  )
+  for _ = 1, #hrows do
+    local entry = state.get_selected_entry()
+    if entry and entry.value.text == "controlk-source-marks" then
+      break
+    end
+    actions.move_selection_next(hb)
+  end
+  actions.select_default(hb)
+  vim.wait(300, function()
+    return vim.bo.filetype == "help"
+  end, 20)
+  tag = vim.bo.filetype == "help" and vim.api.nvim_get_current_line():match("%*(controlk[^*]+)%*")
+  check("Enter on a controlk help row opens that section", tag == "controlk-source-marks", tag)
+  if vim.bo.filetype == "help" then
+    vim.cmd.helpclose()
+  elseif vim.api.nvim_buf_is_valid(hb) then
+    close(hb)
+  end
+
   say("== files: hidden")
   vim.fn.writefile({}, FIX .. "/proj/.dotnote")
   local fp, fb = open_picker(FIX .. "/proj/src/widget.h")

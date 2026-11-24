@@ -122,10 +122,14 @@ Help and the prefix list (`?`)                       *controlk-source-help*
     `?` alone, without a space, lists every configured prefix, as an empty
     prompt does. Enter replaces the prompt with the chosen prefix and a space,
     and the picker stays open on that source.
-    `? text` searches the help tags on 'runtimepath': first what `:help text`
-    would offer (|getcompletion()| with "help"), in Neovim's own order, then
-    every other tag, fuzzy matched, so `? bufgetlines` still finds
-    `nvim_buf_get_lines()`. Enter opens the help.
+    `? text` first lists the prefixes it names: the text is the prefix, or the
+    source's title holds it, ignoring case (`? cmake` gives `cm` and `cmo`).
+    Enter on one switches to it, as in the list. Next come their sections of
+    this help (`? mark` gives |controlk-source-marks|). Then it searches the
+    help tags on 'runtimepath': first what `:help text` would offer
+    (|getcompletion()| with "help"), in Neovim's own order, then every other
+    tag, fuzzy matched, so `? bufgetlines` still finds `nvim_buf_get_lines()`.
+    Enter on a section or a tag opens the help.
 
 Prefix suggestions                                *controlk-prefix-suggestions*
     The locator opens on the list of prefixes and shows only prefixes until a
