@@ -4,6 +4,8 @@ One picker for everything, selected by a prefix, in the style of Qt Creator's Lo
 It opens on the list of prefixes. Type a prefix and a space to switch to a source: project files,
 symbols, CMake targets, help, commands and more. Type anything else to browse the file system.
 
+<!-- DEMO: the video's user-attachments URL goes on this line. -->
+
 ## Requirements
 
 - Neovim 0.10.4 or newer
